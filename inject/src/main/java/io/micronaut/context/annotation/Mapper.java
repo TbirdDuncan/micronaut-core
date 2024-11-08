@@ -24,7 +24,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * An annotation that can be used on abstract methods that define a return type and exactly a single argument.
+ * An annotation that can be used on abstract methods for mapping, merging multiple objects.
+ * The method needs to define a single return type and at least one argument.
  *
  * <p>Inspired by similar frameworks like MapStruct but internally uses the {@link io.micronaut.core.beans.BeanIntrospection} model.</p>
  *
@@ -38,6 +39,18 @@ import java.lang.annotation.Target;
 public @interface Mapper {
 
     /**
+     * A merge strategy to supply to {@link #mergeStrategy()}.
+     * Properties from subsequent arguments will always override properties from previous arguments with the same name.
+     */
+    String MERGE_STRATEGY_ALWAYS_OVERRIDE = "ALWAYS_OVERRIDE";
+
+    /**
+     * A merge strategy to supply to {@link #mergeStrategy()}.
+     * Non-null properties from subsequent arguments will override properties from previous arguments.
+     */
+    String MERGE_STRATEGY_NOT_NULL_OVERRIDE = "NOT_NULL_OVERRIDE";
+
+    /**
      * @return Defined mappings.
      */
     Mapping[] value() default {};
@@ -46,6 +59,19 @@ public @interface Mapper {
      * @return The conflict strategy.
      */
     ConflictStrategy conflictStrategy() default ConflictStrategy.CONVERT;
+
+    /**
+     * The merge strategy to use if method has more than one parameter.
+     *
+     * <p>By default, any non-null property from subsequent arguments will
+     * override property with the same name from previous arguments.</p>
+     *
+     * <p>To define a custom strategy, create a named singleton of type {@link MergeStrategy}
+     * and specify the same name here.</p>
+     *
+     * @return The merge strategy
+     */
+    String mergeStrategy() default MERGE_STRATEGY_NOT_NULL_OVERRIDE;
 
     /**
      * The mappings.
@@ -103,5 +129,29 @@ public @interface Mapper {
          * Throw an {@link IllegalArgumentException}.
          */
         ERROR
+    }
+
+    /**
+     * An interface for defining merge strategies.
+     * Merge strategies are used when the mapping has two or more arguments.
+     */
+    interface MergeStrategy {
+
+        /**
+         * Merge a single property by returning the value to set the property to.
+         * The merge strategy will be called every time a property needs to be set, even for properties of the first argument.
+         *
+         * <p>The property that is returned from the method will be set. For example, if you do not want
+         * to update the property, return the {@code currentValue}.</p>
+         *
+         * @param currentValue The currently specified value
+         * @param value The newly supplied value
+         * @param valueOwner The owner of the new value
+         * @param propertyName The name of the property to merge
+         * @param mappedPropertyName The name of the property from the owner
+         * @return The new value to set
+         */
+        Object merge(Object currentValue, Object value, Object valueOwner, String propertyName, String mappedPropertyName);
+
     }
 }
