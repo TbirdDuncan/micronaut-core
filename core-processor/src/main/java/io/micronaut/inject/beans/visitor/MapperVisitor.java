@@ -71,6 +71,7 @@ public final class MapperVisitor implements TypeElementVisitor<Object, Mapper> {
         }
     }
 
+    @SuppressWarnings("java:S1192")
     private void validateMappingAnnotations(MethodElement element, List<AnnotationValue<Mapper.Mapping>> values, ClassElement toType) {
         @NonNull ParameterElement[] parameters = element.getParameters();
 
