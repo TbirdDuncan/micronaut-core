@@ -38,7 +38,6 @@ import io.micronaut.sourcegen.model.FieldDef;
 import io.micronaut.sourcegen.model.MethodDef;
 import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
-import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 import javax.lang.model.element.Modifier;
@@ -68,7 +67,7 @@ import static io.micronaut.inject.writer.AbstractClassFileWriter.getInternalName
  * @since 3.0
  */
 @Internal
-public class ExecutableMethodsDefinitionWriter2 implements Opcodes, ClassOutputWriter {
+public class ExecutableMethodsDefinitionWriter2 implements ClassOutputWriter {
     public static final String CLASS_SUFFIX = "$Exec";
 
     public static final Method GET_EXECUTABLE_AT_INDEX_METHOD = ReflectionUtils.getRequiredInternalMethod(AbstractExecutableMethodsDefinition.class, "getExecutableMethodByIndex", int.class);
@@ -86,8 +85,6 @@ public class ExecutableMethodsDefinitionWriter2 implements Opcodes, ClassOutputW
     private static final Constructor<?> SUPER_CONSTRUCTOR = ReflectionUtils.getRequiredInternalConstructor(
         AbstractExecutableMethodsDefinition.class,
         AbstractExecutableMethodsDefinition.MethodReference[].class);
-
-//    private static final Method WITH_INTERCEPTED_CONSTRUCTOR = new Method(CONSTRUCTOR_NAME, getConstructorDescriptor(boolean.class));
 
     private static final Method GET_METHOD = ReflectionUtils.getRequiredInternalMethod(AbstractExecutableMethodsDefinition.class, "getMethod", String.class, Class[].class);
 
@@ -452,7 +449,7 @@ public class ExecutableMethodsDefinitionWriter2 implements Opcodes, ClassOutputW
      * @param p The class element
      * @return The string representation
      */
-    protected static String toTypeString(ClassElement p) {
+    private static String toTypeString(ClassElement p) {
         String name = p.getName();
         if (p.isArray()) {
             return name + IntStream.range(0, p.getArrayDimensions()).mapToObj(ignore -> "[]").collect(Collectors.joining());

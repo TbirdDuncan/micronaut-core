@@ -37,7 +37,6 @@ import io.micronaut.sourcegen.model.StatementDef;
 import io.micronaut.sourcegen.model.TypeDef;
 import io.micronaut.sourcegen.model.VariableDef;
 import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import javax.lang.model.element.Modifier;
@@ -53,10 +52,10 @@ import java.util.stream.IntStream;
  * Switch based dispatch writer.
  *
  * @author Denis Stepanov
- * @since 3.1
+ * @since 4.7
  */
 @Internal
-public final class DispatchWriter2 extends AbstractClassFileWriter implements Opcodes {
+public final class DispatchWriter2 implements ClassOutputWriter {
 
     private static final MethodDef GET_ACCESSIBLE_TARGET_METHOD = MethodDef.builder("getAccessibleTargetMethodByIndex")
         .returns(Method.class)

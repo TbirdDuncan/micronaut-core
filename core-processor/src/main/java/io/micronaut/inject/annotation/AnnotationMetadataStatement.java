@@ -36,6 +36,7 @@ import io.micronaut.sourcegen.model.TypeDef;
 
 import javax.lang.model.element.Modifier;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -130,6 +131,11 @@ public class AnnotationMetadataStatement {
     private static final Constructor<?> CONSTRUCTOR_CONTEXT_EVALUATED_EXPRESSION = ReflectionUtils.getRequiredInternalConstructor(
         AbstractEvaluatedExpression.class,
         Object.class
+    );
+
+    private static final Field ANNOTATION_DEFAULT_VALUES_PROVIDER = ReflectionUtils.getRequiredField(
+        AnnotationMetadataSupport.class,
+        "ANNOTATION_DEFAULT_VALUES_PROVIDER"
     );
 
     @Internal
@@ -364,7 +370,11 @@ public class AnnotationMetadataStatement {
         }
         if (value.getClass().isArray()) {
             Class<?> arrayComponentType = value.getClass().getComponentType();
-            return ClassTypeDef.of(arrayComponentType).array().instantiate(Arrays.stream((Object[]) value)
+            if (Enum.class.isAssignableFrom(arrayComponentType)) {
+                // Express enums as strings
+                arrayComponentType = String.class;
+            }
+            return TypeDef.of(arrayComponentType).array().instantiate(Arrays.stream((Object[]) value)
                 .map(v -> asValueExpression(declaringType, v, loadTypeMethods))
                 .toList());
         }
@@ -381,7 +391,11 @@ public class AnnotationMetadataStatement {
                     break;
                 }
             }
-            return ClassTypeDef.of(componentType).array()
+            if (Enum.class.isAssignableFrom(componentType)) {
+                // Express enums as strings
+                componentType = String.class;
+            }
+            return TypeDef.of(componentType).array()
                 .instantiate(collection.stream().map(i -> asValueExpression(declaringType, i, loadTypeMethods)).toList());
         }
         if (value instanceof AnnotationValue<?> data) {
@@ -390,7 +404,7 @@ public class AnnotationMetadataStatement {
                     CONSTRUCTOR_ANNOTATION_VALUE_AND_MAP,
                     ExpressionDef.constant(data.getAnnotationName()),
                     stringMapOf(declaringType, data.getValues(), true, null, loadTypeMethods),
-                    ClassTypeDef.of(AnnotationMetadataSupport.class).getStaticField("ANNOTATION_DEFAULT_VALUES_PROVIDER", ClassTypeDef.of(AnnotationDefaultValuesProvider.class))
+                    ClassTypeDef.of(AnnotationMetadataSupport.class).getStaticField(ANNOTATION_DEFAULT_VALUES_PROVIDER)
                 );
         }
         if (value instanceof EvaluatedExpressionReference expressionReference) {
