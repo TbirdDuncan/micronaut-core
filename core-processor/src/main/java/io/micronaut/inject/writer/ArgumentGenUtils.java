@@ -195,7 +195,7 @@ public class ArgumentGenUtils {
         Map<String, ClassElement> typeArguments,
         Map<String, MethodDef> loadTypeMethods) {
         annotationMetadata = MutableAnnotationMetadata.of(annotationMetadata);
-        ExpressionDef.Constant argumentTypeConstant = ExpressionDef.constant(TypeDef.of(resolveArgument(argumentType)));
+        ExpressionDef.Constant argumentTypeConstant = ExpressionDef.constant(TypeDef.of(resolveArgument(argumentType), true));
 
         boolean hasAnnotations = !annotationMetadata.isEmpty();
         boolean hasTypeArguments = typeArguments != null && !typeArguments.isEmpty();
@@ -389,7 +389,7 @@ public class ArgumentGenUtils {
         Map<String, ClassElement> typeArguments,
         Set<Object> visitedTypes,
         Map<String, MethodDef> loadTypeMethods) {
-        ExpressionDef.Constant argumentTypeConstant = ExpressionDef.constant(TypeDef.of(resolveArgument(argumentType)));
+        ExpressionDef.Constant argumentTypeConstant = ExpressionDef.constant(TypeDef.of(resolveArgument(argumentType), true));
 
         List<ExpressionDef> values = new ArrayList<>();
 
@@ -474,7 +474,7 @@ public class ArgumentGenUtils {
      * @param argumentType The argument type
      */
     private static ExpressionDef buildArgument(String argumentName, ClassElement argumentType) {
-        ExpressionDef.Constant argumentTypeConstant = ExpressionDef.constant(TypeDef.of(resolveArgument(argumentType)));
+        ExpressionDef.Constant argumentTypeConstant = ExpressionDef.constant(TypeDef.of(resolveArgument(argumentType), true));
 
         if (argumentType instanceof GenericPlaceholderElement placeholderElement) {
             // Persist resolved placeholder for backward compatibility
@@ -539,7 +539,7 @@ public class ArgumentGenUtils {
             AnnotationMetadataStatement.annotationMetadataReference(annotationMetadata),
             // 3rd argument: generics
             ClassTypeDef.of(Class.class).array().instantiate(
-                Arrays.stream(generics).map(g -> ExpressionDef.constant(ClassTypeDef.of(g))).toList()
+                Arrays.stream(generics).map(g -> ExpressionDef.constant(TypeDef.of(g, true))).toList()
             )
         );
     }
