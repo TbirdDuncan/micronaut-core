@@ -140,6 +140,13 @@ public class ExecutableMethodsDefinitionWriter2 implements ClassOutputWriter {
         return Type.getObjectType(getInternalName(className));
     }
 
+    /**
+     * @return The generated class type.
+     */
+    public ClassTypeDef getClassTypeDef() {
+        return ClassTypeDef.of(className);
+    }
+
     private MethodElement getMethodElement(int index) {
         return methodDispatchWriter.getDispatchTargets().get(index).getMethodElement();
     }

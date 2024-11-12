@@ -18,7 +18,7 @@ package io.micronaut.inject.processing;
 import io.micronaut.aop.Adapter;
 import io.micronaut.aop.InterceptorKind;
 import io.micronaut.aop.internal.intercepted.InterceptedMethodUtil;
-import io.micronaut.aop.writer.AopProxyWriter;
+import io.micronaut.aop.writer.AopProxyWriter2;
 import io.micronaut.context.annotation.Executable;
 import io.micronaut.context.annotation.Property;
 import io.micronaut.context.annotation.Value;
@@ -68,7 +68,7 @@ class DeclaredBeanElementCreator extends AbstractBeanElementCreator {
     private static final String MSG_ADAPTER_METHOD_PREFIX = "Cannot adapt method [";
     private static final String MSG_TARGET_METHOD_PREFIX = "] to target method [";
 
-    protected AopProxyWriter aopProxyVisitor;
+    protected AopProxyWriter2 aopProxyVisitor;
     protected final boolean isAopProxy;
     private final AtomicInteger adaptedMethodIndex = new AtomicInteger(0);
 
@@ -115,7 +115,7 @@ class DeclaredBeanElementCreator extends AbstractBeanElementCreator {
      * @param methodElement the method that is originating the AOP proxy
      * @return The AOP proxy visitor
      */
-    protected AopProxyWriter getAroundAopProxyVisitor(BeanDefinitionVisitor visitor, @Nullable MethodElement methodElement) {
+    protected AopProxyWriter2 getAroundAopProxyVisitor(BeanDefinitionVisitor visitor, @Nullable MethodElement methodElement) {
         if (aopProxyVisitor == null) {
             if (classElement.isFinal()) {
                 throw new ProcessingException(classElement, "Cannot apply AOP advice to final class. Class must be made non-final to support proxying: " + classElement.getName());
@@ -431,14 +431,14 @@ class DeclaredBeanElementCreator extends AbstractBeanElementCreator {
             } else if (methodElement.isStatic()) {
                 throw new ProcessingException(methodElement, "Method defines AOP advice but is declared static");
             }
-            AopProxyWriter aopProxyVisitor = getAroundAopProxyVisitor(visitor, methodElement);
+            AopProxyWriter2 aopProxyVisitor = getAroundAopProxyVisitor(visitor, methodElement);
             visitAroundMethod(aopProxyVisitor, classElement, methodElement);
             return true;
         }
         return false;
     }
 
-    protected void visitAroundMethod(AopProxyWriter aopProxyWriter, TypedElement beanType, MethodElement methodElement) {
+    protected void visitAroundMethod(AopProxyWriter2 aopProxyWriter, TypedElement beanType, MethodElement methodElement) {
         aopProxyWriter.visitInterceptorBinding(
             InterceptedMethodUtil.resolveInterceptorBinding(methodElement.getAnnotationMetadata(), InterceptorKind.AROUND)
         );
@@ -585,7 +585,7 @@ class DeclaredBeanElementCreator extends AbstractBeanElementCreator {
         String rootName = classElement.getSimpleName() + '$' + interfaceToAdapt.getSimpleName() + '$' + sourceMethod.getSimpleName();
         String beanClassName = rootName + adaptedMethodIndex.incrementAndGet();
 
-        AopProxyWriter aopProxyWriter = new AopProxyWriter(
+        AopProxyWriter2 aopProxyWriter = new AopProxyWriter2(
             classElement.getPackageName(),
             beanClassName,
             true,

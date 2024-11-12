@@ -89,7 +89,7 @@ public final class WriterGenUtils {
                                                       BiFunction<Integer, ParameterElement, ExpressionDef> argumentValueProvider,
                                                       @Nullable
                                                       BiFunction<Integer, ParameterElement, ExpressionDef> argumentValueIsPresentProvider) {
-        ClassTypeDef beanType = TypeDef.erasure(constructor.getOwningType());
+        ClassTypeDef beanType = (ClassTypeDef) TypeDef.erasure(constructor.getOwningType());
 
         boolean isConstructor = constructor.getName().equals("<init>");
         boolean isCompanion = constructor.getOwningType().getSimpleName().endsWith("$Companion");
@@ -134,7 +134,7 @@ public final class WriterGenUtils {
             if (constructor.isStatic()) {
                 return beanType.invokeStatic(constructor, constructorValues);
             }
-            return TypeDef.erasure(constructor.getReturnType())
+            return ((ClassTypeDef) TypeDef.erasure(constructor.getReturnType()))
                 .getStaticField("Companion", beanType)
                 .invoke(constructor, constructorValues);
         }

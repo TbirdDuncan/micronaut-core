@@ -527,9 +527,9 @@ public class ArgumentGenUtils {
      * @param generics           The generics
      * @since 3.0.0
      */
-    protected static ExpressionDef buildArgumentWithGenerics(TypeDef type,
-                                                             AnnotationMetadataReference annotationMetadata,
-                                                             ClassElement[] generics) {
+    public static ExpressionDef buildArgumentWithGenerics(TypeDef type,
+                                                          AnnotationMetadataReference annotationMetadata,
+                                                          ClassElement[] generics) {
 
         return TYPE_ARGUMENT.invokeStatic(
             METHOD_CREATE_ARGUMENT_WITH_ANNOTATION_METADATA_CLASS_GENERICS,

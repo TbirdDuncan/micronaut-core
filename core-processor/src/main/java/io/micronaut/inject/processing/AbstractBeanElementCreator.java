@@ -19,7 +19,7 @@ import io.micronaut.aop.Interceptor;
 import io.micronaut.aop.InterceptorKind;
 import io.micronaut.aop.Introduction;
 import io.micronaut.aop.internal.intercepted.InterceptedMethodUtil;
-import io.micronaut.aop.writer.AopProxyWriter;
+import io.micronaut.aop.writer.AopProxyWriter2;
 import io.micronaut.context.RequiresCondition;
 import io.micronaut.context.annotation.Executable;
 import io.micronaut.context.annotation.Requires;
@@ -110,7 +110,7 @@ abstract class AbstractBeanElementCreator implements BeanDefinitionCreator {
     }
 
     protected boolean visitIntrospectedMethod(BeanDefinitionVisitor visitor, ClassElement classElement, MethodElement methodElement) {
-        AopProxyWriter aopProxyWriter = (AopProxyWriter) visitor;
+        AopProxyWriter2 aopProxyWriter = (AopProxyWriter2) visitor;
 
         final AnnotationMetadata resolvedTypeMetadata = classElement.getAnnotationMetadata();
         final boolean resolvedTypeMetadataIsAopProxyType = InterceptedMethodUtil.hasDeclaredAroundAdvice(resolvedTypeMetadata);
@@ -130,7 +130,7 @@ abstract class AbstractBeanElementCreator implements BeanDefinitionCreator {
         return false;
     }
 
-    protected static void addToIntroduction(AopProxyWriter aopProxyWriter,
+    protected static void addToIntroduction(AopProxyWriter2 aopProxyWriter,
                                             ClassElement classElement,
                                             MethodElement methodElement,
                                             boolean ignoreNotAbstract) {
@@ -161,10 +161,10 @@ abstract class AbstractBeanElementCreator implements BeanDefinitionCreator {
         }
     }
 
-    protected AopProxyWriter createAroundAopProxyWriter(BeanDefinitionVisitor existingWriter,
-                                                        AnnotationMetadata aopElementAnnotationProcessor,
-                                                        VisitorContext visitorContext,
-                                                        boolean forceProxyTarget) {
+    protected AopProxyWriter2 createAroundAopProxyWriter(BeanDefinitionVisitor existingWriter,
+                                                         AnnotationMetadata aopElementAnnotationProcessor,
+                                                         VisitorContext visitorContext,
+                                                         boolean forceProxyTarget) {
         OptionalValues<Boolean> aroundSettings = aopElementAnnotationProcessor.getValues(AnnotationUtil.ANN_AROUND, Boolean.class);
         Map<CharSequence, Boolean> settings = new LinkedHashMap<>();
         for (CharSequence setting : aroundSettings) {
@@ -176,7 +176,7 @@ abstract class AbstractBeanElementCreator implements BeanDefinitionCreator {
         }
         aroundSettings = OptionalValues.of(Boolean.class, settings);
 
-        return new AopProxyWriter(
+        return new AopProxyWriter2(
             (BeanDefinitionWriter) existingWriter,
             aroundSettings,
             visitorContext,
@@ -184,7 +184,7 @@ abstract class AbstractBeanElementCreator implements BeanDefinitionCreator {
         );
     }
 
-    protected AopProxyWriter createIntroductionAopProxyWriter(ClassElement typeElement,
+    protected AopProxyWriter2 createIntroductionAopProxyWriter(ClassElement typeElement,
                                                               VisitorContext visitorContext) {
         AnnotationMetadata annotationMetadata = typeElement.getAnnotationMetadata();
 
@@ -201,7 +201,7 @@ abstract class AbstractBeanElementCreator implements BeanDefinitionCreator {
 
         io.micronaut.core.annotation.AnnotationValue<?>[] interceptorTypes = ArrayUtils.concat(aroundInterceptors, introductionInterceptors);
         boolean isInterface = typeElement.isInterface();
-        AopProxyWriter aopProxyWriter = new AopProxyWriter(
+        AopProxyWriter2 aopProxyWriter = new AopProxyWriter2(
             packageName,
             beanClassName,
             isInterface,

@@ -16,7 +16,7 @@
 package io.micronaut.inject.processing;
 
 import io.micronaut.aop.internal.intercepted.InterceptedMethodUtil;
-import io.micronaut.aop.writer.AopProxyWriter;
+import io.micronaut.aop.writer.AopProxyWriter2;
 import io.micronaut.context.annotation.Bean;
 import io.micronaut.context.annotation.ConfigurationReader;
 import io.micronaut.context.annotation.EachProperty;
@@ -230,7 +230,7 @@ final class FactoryBeanElementCreator extends DeclaredBeanElementCreator {
                 }
             }
 
-            AopProxyWriter aopProxyWriter = createAroundAopProxyWriter(producedBeanDefinitionWriter, producedAnnotationMetadata, visitorContext, true);
+            AopProxyWriter2 aopProxyWriter = createAroundAopProxyWriter(producedBeanDefinitionWriter, producedAnnotationMetadata, visitorContext, true);
             if (constructorElement != null) {
                 aopProxyWriter.visitBeanDefinitionConstructor(constructorElement, constructorElement.isReflectionRequired(), visitorContext);
             } else {

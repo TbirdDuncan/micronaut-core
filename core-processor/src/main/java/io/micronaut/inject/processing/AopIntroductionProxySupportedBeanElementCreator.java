@@ -15,7 +15,7 @@
  */
 package io.micronaut.inject.processing;
 
-import io.micronaut.aop.writer.AopProxyWriter;
+import io.micronaut.aop.writer.AopProxyWriter2;
 import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.inject.ast.ClassElement;
@@ -63,7 +63,7 @@ final class AopIntroductionProxySupportedBeanElementCreator extends DeclaredBean
     }
 
     @Override
-    protected AopProxyWriter getAroundAopProxyVisitor(BeanDefinitionVisitor visitor, MethodElement methodElement) {
+    protected AopProxyWriter2 getAroundAopProxyVisitor(BeanDefinitionVisitor visitor, MethodElement methodElement) {
         return aopProxyVisitor;
     }
 

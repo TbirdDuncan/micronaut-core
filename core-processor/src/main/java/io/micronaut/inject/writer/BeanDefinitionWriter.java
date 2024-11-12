@@ -130,6 +130,7 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.signature.SignatureVisitor;
@@ -152,6 +153,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -559,6 +561,12 @@ public class BeanDefinitionWriter extends AbstractClassFileWriter implements Bea
     private static final org.objectweb.asm.commons.Method METHOD_BEAN_RESOLUTION_CONTEXT_MARK_FACTORY = org.objectweb.asm.commons.Method.getMethod(
             ReflectionUtils.getRequiredMethod(BeanResolutionContext.class, "markDependentAsFactory")
     );
+
+    private static final org.objectweb.asm.commons.Method METHOD_PROXY_TARGET_TYPE = org.objectweb.asm.commons.Method.getMethod(ReflectionUtils.getRequiredInternalMethod(ProxyBeanDefinition.class, "getTargetDefinitionType"));
+
+    private static final org.objectweb.asm.commons.Method METHOD_PROXY_TARGET_CLASS = org.objectweb.asm.commons.Method.getMethod(ReflectionUtils.getRequiredInternalMethod(ProxyBeanDefinition.class, "getTargetType"));
+
+
     private static final Type TYPE_QUALIFIERS = Type.getType(Qualifiers.class);
     private static final Type TYPE_QUALIFIER = Type.getType(Qualifier.class);
     private static final String MESSAGE_ONLY_SINGLE_CALL_PERMITTED = "Only a single call to visitBeanFactoryMethod(..) is permitted";
@@ -641,6 +649,8 @@ public class BeanDefinitionWriter extends AbstractClassFileWriter implements Bea
     private final boolean keepConfPropInjectPoints;
     private boolean proxiedBean = false;
     private boolean isProxyTarget = false;
+
+    private String proxyBeanDefinitionName, proxyBeanTypeName;
 
     /**
      * Creates a bean definition writer.
@@ -780,6 +790,13 @@ public class BeanDefinitionWriter extends AbstractClassFileWriter implements Bea
                 .toList();
         String prop = visitorContext.getOptions().get(OMIT_CONFPROP_INJECTION_POINTS);
         keepConfPropInjectPoints = prop == null || !prop.equals("true");
+    }
+
+    public void generateProxyReference(String proxyBeanDefinitionName, String proxyBeanTypeName) {
+        Objects.requireNonNull(proxyBeanDefinitionName);
+        Objects.requireNonNull(proxyBeanTypeName);
+        this.proxyBeanDefinitionName = proxyBeanDefinitionName;
+        this.proxyBeanTypeName = proxyBeanTypeName;
     }
 
     @Override
@@ -1193,6 +1210,32 @@ public class BeanDefinitionWriter extends AbstractClassFileWriter implements Bea
             isEnabledBeanMethod2.push(true);
             isEnabledBeanMethod2.returnValue();
             isEnabledBeanMethod2.endMethod();
+        }
+
+        if (proxyBeanDefinitionName != null) {
+            GeneratorAdapter targetDefinitionGenerator = new GeneratorAdapter(classWriter.visitMethod(Opcodes.ACC_PUBLIC,
+                METHOD_PROXY_TARGET_TYPE.getName(),
+                METHOD_PROXY_TARGET_TYPE.getDescriptor(),
+                null, null
+
+            ), Opcodes.ACC_PUBLIC, METHOD_PROXY_TARGET_TYPE.getName(), METHOD_PROXY_TARGET_TYPE.getDescriptor());
+            targetDefinitionGenerator.loadThis();
+            targetDefinitionGenerator.push(getTypeReferenceForName(proxyBeanDefinitionName));
+            targetDefinitionGenerator.returnValue();
+            targetDefinitionGenerator.visitMaxs(1, 1);
+            targetDefinitionGenerator.visitEnd();
+
+            GeneratorAdapter targetTypeGenerator = new GeneratorAdapter(classWriter.visitMethod(ACC_PUBLIC,
+                METHOD_PROXY_TARGET_CLASS.getName(),
+                METHOD_PROXY_TARGET_CLASS.getDescriptor(),
+                null, null
+
+            ), ACC_PUBLIC, METHOD_PROXY_TARGET_CLASS.getName(), METHOD_PROXY_TARGET_CLASS.getDescriptor());
+            targetTypeGenerator.loadThis();
+            targetTypeGenerator.push(getTypeReferenceForName(proxyBeanTypeName));
+            targetTypeGenerator.returnValue();
+            targetTypeGenerator.visitMaxs(1, 1);
+            targetTypeGenerator.visitEnd();
         }
 
         classWriter.visitEnd();
