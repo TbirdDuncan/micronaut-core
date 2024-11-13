@@ -670,12 +670,14 @@ public class AopProxyWriter2 implements ProxyingBeanDefinitionVisitor, ClassOutp
                     interceptedProxyBridgeMethodName = "$$access$$" + methodName;
 
                     // now build a bridge to invoke the original method
+                    ClassTypeDef declaringTypeDef = (ClassTypeDef) TypeDef.erasure(methodElement.getDeclaringType());
                     proxyBuilder.addMethod(
                         MethodDef.builder(interceptedProxyBridgeMethodName)
                             .addModifiers(Modifier.PUBLIC)
                             .addParameters(argumentTypeList.stream().map(p -> TypeDef.erasure(p.getType())).toList())
                             .returns(TypeDef.erasure(methodElement.getReturnType()))
-                            .build((aThis, methodParameters) -> aThis.superRef().invoke(methodElement, methodParameters).returning())
+                            .build((aThis, methodParameters) -> aThis.superRef(declaringTypeDef)
+                                .invoke(methodElement, methodParameters).returning())
                     );
                 }
             }
@@ -784,7 +786,7 @@ public class AopProxyWriter2 implements ProxyingBeanDefinitionVisitor, ClassOutp
             proxyBuilder.superclass(targetType);
         }
         List<TypeDef> interfaces = new ArrayList<>();
-        interfaceTypes.stream().map(TypeDef::of).forEach(interfaces::add);
+        interfaceTypes.stream().map(TypeDef::erasure).forEach(interfaces::add);
         if (isInterface && implementInterface) {
             interfaces.add(targetType);
         }
@@ -1398,7 +1400,7 @@ public class AopProxyWriter2 implements ProxyingBeanDefinitionVisitor, ClassOutp
         return MethodDef.builder("swap")
             .addModifiers(Modifier.PUBLIC)
             .addParameters(Object.class)
-            .returns(targetField.getType())
+            .returns(Object.class)
             .build((aThis, methodParameters) -> {
                 VariableDef.Field lock = aThis.field(writeField);
                 return StatementDef.multi(
