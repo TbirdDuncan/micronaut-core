@@ -202,7 +202,7 @@ public class AopProxyWriter2 implements ProxyingBeanDefinitionVisitor, ClassOutp
     private final BeanDefinitionWriter parentWriter;
     private final boolean isIntroduction;
     private final boolean implementInterface;
-    private boolean isProxyTarget;
+    private final boolean isProxyTarget;
 
     private final List<MethodRef> proxiedMethods = new ArrayList<>();
     private final Set<MethodRef> proxiedMethodsRefSet = new HashSet<>();
@@ -350,6 +350,7 @@ public class AopProxyWriter2 implements ProxyingBeanDefinitionVisitor, ClassOutp
 
         this.packageName = packageName;
         this.isInterface = isInterface;
+        this.isProxyTarget = false;
         this.hotswap = false;
         this.lazy = false;
         this.cacheLazyTarget = false;
@@ -390,10 +391,6 @@ public class AopProxyWriter2 implements ProxyingBeanDefinitionVisitor, ClassOutp
             .build();
 
         proxyBuilder.addField(proxyMethodsField);
-
-        // add the $target field for the target bean
-        targetField = FieldDef.builder(FIELD_TARGET, ClassTypeDef.of(targetClassFullName)).addModifiers(Modifier.PRIVATE).build();
-        proxyBuilder.addField(targetField);
 
         this.visitorContext = visitorContext;
     }
@@ -675,7 +672,7 @@ public class AopProxyWriter2 implements ProxyingBeanDefinitionVisitor, ClassOutp
                         MethodDef.builder(interceptedProxyBridgeMethodName)
                             .addModifiers(Modifier.PUBLIC)
                             .addParameters(argumentTypeList.stream().map(p -> TypeDef.erasure(p.getType())).toList())
-                            .returns(TypeDef.erasure(methodElement.getReturnType()))
+                            .returns(TypeDef.erasure(returnType))
                             .build((aThis, methodParameters) -> aThis.superRef(declaringTypeDef)
                                 .invoke(methodElement, methodParameters).returning())
                     );

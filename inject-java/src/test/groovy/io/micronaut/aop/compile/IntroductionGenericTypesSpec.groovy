@@ -17,7 +17,6 @@ package io.micronaut.aop.compile
 
 import io.micronaut.annotation.processing.test.AbstractTypeElementSpec
 import io.micronaut.context.ApplicationContext
-import io.micronaut.context.DefaultBeanContext
 import io.micronaut.core.type.ReturnType
 import io.micronaut.inject.BeanDefinition
 import io.micronaut.inject.InstantiatableBeanDefinition
@@ -127,6 +126,83 @@ class SubPerson extends Person {}
         def getPeopleSingle = returnType(beanDefinition, "getPeopleSingle")
         getPeopleSingle.typeVariables['T'].type== List
         getPeopleSingle.typeVariables['T'].typeVariables['E'].type.name == 'test.SubPerson'
+
+
+        when:
+        ApplicationContext context = ApplicationContext.run()
+        def instance = ((InstantiatableBeanDefinition)beanDefinition).instantiate(context)
+
+        then:"the methods are invocable"
+        instance.getPerson() == null
+        instance.getPeople() == null
+        instance.getPeopleArray() == null
+        instance.getPeopleSingle() == null
+        instance.save(null) == null
+        instance.saveAll([]) == null
+
+        cleanup:
+        context.close()
+    }
+
+    void "test that generic return types are correct when implementing an interface with type arguments 3"() {
+        when:
+        BeanDefinition beanDefinition = buildBeanDefinition('test.MyBean' + BeanDefinitionVisitor.PROXY_SUFFIX, '''
+package test;
+
+import io.micronaut.aop.introduction.*;
+import io.micronaut.context.annotation.*;
+import java.net.*;
+
+interface MyInterface<T extends Person> {
+
+    reactor.core.publisher.Mono<java.util.List<T>> getPeopleSingle();
+
+    T getPerson();
+
+    java.util.List<T> getPeople();
+
+    void save(T person);
+
+    void saveAll(java.util.List<T> person);
+
+    T[] getPeopleArray();
+
+    java.util.List<T[]> getPeopleListArray();
+
+    <V extends java.net.URL> java.util.Map<T,V> getPeopleMap();
+
+}
+
+
+@Stub
+@jakarta.inject.Singleton
+@Executable
+interface MyBean extends MyInterface {
+
+}
+
+class Person {}
+class SubPerson extends Person {}
+
+''')
+        then:
+        !beanDefinition.isAbstract()
+        beanDefinition != null
+        returnType(beanDefinition, "getPerson").type.name == 'test.Person'
+        returnType(beanDefinition, "getPeople").type == List
+        returnType(beanDefinition, "getPeople").asArgument().hasTypeVariables()
+        returnType(beanDefinition, "getPeople").asArgument().typeVariables['E'].type.name == 'test.Person'
+        returnType(beanDefinition, "getPeopleMap").typeVariables['K'].type.name == 'test.Person'
+        returnType(beanDefinition, "getPeopleMap").typeVariables['V'].type == URL
+        returnType(beanDefinition, "getPeopleArray").type.isArray()
+        returnType(beanDefinition, "getPeopleArray").type.name.contains('test.Person')
+        returnType(beanDefinition, "getPeopleListArray").type == List
+        returnType(beanDefinition, "getPeopleListArray").typeVariables['E'].type.isArray()
+        beanDefinition.findPossibleMethods("save").findFirst().get().targetMethod != null
+        beanDefinition.findPossibleMethods("getPerson").findFirst().get().targetMethod != null
+        def getPeopleSingle = returnType(beanDefinition, "getPeopleSingle")
+        getPeopleSingle.typeVariables['T'].type== List
+        getPeopleSingle.typeVariables['T'].typeVariables['E'].type.name == 'test.Person'
 
 
         when:
