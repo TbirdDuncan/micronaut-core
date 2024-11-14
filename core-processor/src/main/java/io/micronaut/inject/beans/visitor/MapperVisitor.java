@@ -28,6 +28,7 @@ import io.micronaut.inject.processing.ProcessingException;
 import io.micronaut.inject.visitor.TypeElementVisitor;
 import io.micronaut.inject.visitor.VisitorContext;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -117,7 +118,7 @@ public final class MapperVisitor implements TypeElementVisitor<Object, Mapper> {
                             if (parameter.getType().getName().equals(Map.class.getName())) {
                                 break;
                             }
-                            if (parameter.getGenericType().getBeanProperties().stream().noneMatch(p -> p.getName().equals(propertyName))) {
+                            if (parameter.getGenericType().getBeanProperties(new PropertyElementQuery().includes(Collections.singleton(propertyName))).isEmpty()) {
                                 throw new ProcessingException(element, "@Mapping(from=\"" + from + "\") specifies property " + propertyName + " that doesn't exist in type " + parameter.getGenericType().getName());
                             }
                             break;
@@ -132,7 +133,7 @@ public final class MapperVisitor implements TypeElementVisitor<Object, Mapper> {
                         if (parameter.getType().getName().equals(Map.class.getName())) {
                             continue;
                         }
-                        if (parameter.getGenericType().getBeanProperties().stream().noneMatch(p -> p.getName().equals(propertyName))) {
+                        if (parameter.getGenericType().getBeanProperties(new PropertyElementQuery().includes(Collections.singleton(propertyName))).isEmpty()) {
                             throw new ProcessingException(element, "@Mapping(from=\"" + from + "\") specifies property " + propertyName + " that doesn't exist in type " + parameter.getGenericType().getName());
                         }
                     }

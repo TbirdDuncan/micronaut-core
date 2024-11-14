@@ -132,7 +132,7 @@ final class MapperIntroduction implements MethodInterceptor<Object, Object> {
         }
 
         return callContext -> {
-            MergeBuilderWrapper<Object> builder = new MergeBuilderWrapper<>(toIntrospection.builder(), mergeStrategy);
+            MergeMappingBuilder<Object> builder = new MergeMappingBuilder<>(toIntrospection.builder(), mergeStrategy);
             for (int i = 0; i < innerInvocations.length; ++i) {
                 builder.setArgIndex(i);
                 innerInvocations[i].map(callContext, builder);
@@ -411,7 +411,7 @@ final class MapperIntroduction implements MethodInterceptor<Object, Object> {
         Object map(MethodInvocationContext<Object, Object> invocationContext);
     }
 
-    private class DefaultMapInvocation implements MapInvocation {
+    private final class DefaultMapInvocation implements MapInvocation {
         private final Map<String, Function<Object, BiConsumer<Object, MappingBuilder<Object>>>> customMapperSuppliers;
         private final List<Function<Object, BiConsumer<Object, MappingBuilder<Object>>>> rootMapperSuppliers;
         private final boolean isMap;
@@ -555,26 +555,59 @@ final class MapperIntroduction implements MethodInterceptor<Object, Object> {
         }
     }
 
-    private interface MappingBuilder<B> {
+    private sealed interface MappingBuilder<B> permits DefaultMappingBuilder, MergeMappingBuilder {
 
-        @NonNull <A> MappingBuilder<B> with(int index, Argument<A> argument, A value, String mappedPropertyName, Object owner);
-
+        /**
+         * @return the arguments to build from.
+         */
         @NonNull Argument<?>[] getBuilderArguments();
 
+        /**
+         * Get the argument index based on its name
+         *
+         * @param name The argument name
+         * @return The index
+         */
         int indexOf(String name);
 
-        B build(Object... params);
+        /**
+         * Set the argument given its index.
+         * The property is retrieved from the owner type.
+         *
+         * @param index The index of the argument
+         * @param argument The argument
+         * @param value The value to set it to
+         * @param mappedPropertyName The property name from the owner class
+         * @param owner The owner of the property
+         * @return this
+         * @param <A> The type of argument
+         */
+        @NonNull <A> MappingBuilder<B> with(int index, Argument<A> argument, A value, String mappedPropertyName, Object owner);
 
+        /**
+         * Set the argument converting it at first.
+         *
+         * @param index The argument index
+         * @param of conversion context
+         * @param value The value to set to
+         * @param conversionService The conversion service
+         * @param mappedPropertyName The name of property from owner class
+         * @param owner The owner of the property
+         * @return this
+         * @param <A> The type of argument
+         */
         <A> MappingBuilder<B> convert(int index, ArgumentConversionContext<A> of, A value, ConversionService conversionService, String mappedPropertyName, Object owner);
+
+        /**
+         * Build the object.
+         *
+         * @param params The parameters of the build method
+         * @return The built object
+         */
+        B build(Object... params);
     }
 
-    private static class DefaultMappingBuilder<B> implements MappingBuilder<B> {
-
-        private final BeanIntrospection.Builder<B> builder;
-
-        public DefaultMappingBuilder(Builder<B> builder) {
-            this.builder = builder;
-        }
+    private record DefaultMappingBuilder<B>(Builder<B> builder) implements MappingBuilder<B> {
 
         @Override
         public <A> MappingBuilder<B> with(int index, Argument<A> argument, A value, String mappedPropertyName, Object owner) {
@@ -604,7 +637,7 @@ final class MapperIntroduction implements MethodInterceptor<Object, Object> {
         }
     }
 
-    private static class MergeBuilderWrapper<B> implements MappingBuilder<B> {
+    private static final class MergeMappingBuilder<B> implements MappingBuilder<B> {
 
         private final BeanIntrospection.Builder<B> builder;
         private final MergeStrategy mergeStrategy;
@@ -612,7 +645,7 @@ final class MapperIntroduction implements MethodInterceptor<Object, Object> {
         private final Object[] params;
         private int argIndex = 0;
 
-        public MergeBuilderWrapper(
+        public MergeMappingBuilder(
                 BeanIntrospection.Builder<B> builder,
                 MergeStrategy mergeStrategy
         ) {
@@ -622,7 +655,7 @@ final class MapperIntroduction implements MethodInterceptor<Object, Object> {
             this.mergeStrategy = mergeStrategy;
         }
 
-        public MergeBuilderWrapper<B> setArgIndex(int argIndex) {
+        public MergeMappingBuilder<B> setArgIndex(int argIndex) {
             this.argIndex = argIndex;
             return this;
         }
@@ -673,14 +706,14 @@ final class MapperIntroduction implements MethodInterceptor<Object, Object> {
 
     private static final class NotNullOverrideMergeStrategy implements MergeStrategy {
         @Override
-        public Object merge(Object currentValue, Object value, Object valueOwner, String propertyName, String mappedPropertyName) {
+        public @Nullable Object merge(Object currentValue, Object value, Object valueOwner, String propertyName, String mappedPropertyName) {
             return value != null ? value : currentValue;
         }
     }
 
     private static final class AlwaysOverrideMergeStrategy implements MergeStrategy {
         @Override
-        public Object merge(Object currentValue, Object value, Object valueOwner, String propertyName, String mappedPropertyName) {
+        public @Nullable Object merge(Object currentValue, Object value, Object valueOwner, String propertyName, String mappedPropertyName) {
             return value;
         }
     }

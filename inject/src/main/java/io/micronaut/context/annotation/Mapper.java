@@ -16,6 +16,8 @@
 package io.micronaut.context.annotation;
 
 import io.micronaut.core.annotation.Experimental;
+import io.micronaut.core.annotation.NonNull;
+import io.micronaut.core.annotation.Nullable;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
@@ -151,7 +153,8 @@ public @interface Mapper {
          * @param mappedPropertyName The name of the property from the owner
          * @return The new value to set
          */
-        Object merge(Object currentValue, Object value, Object valueOwner, String propertyName, String mappedPropertyName);
+        @Nullable
+        Object merge(@Nullable Object currentValue, @Nullable Object value, @NonNull Object valueOwner, @NonNull String propertyName, @NonNull String mappedPropertyName);
 
     }
 }
