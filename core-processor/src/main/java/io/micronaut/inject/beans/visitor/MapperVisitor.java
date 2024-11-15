@@ -96,8 +96,7 @@ public final class MapperVisitor implements TypeElementVisitor<Object, Mapper> {
                     throw new ProcessingException(element, "Multiple @Mapping definitions map to the same property: " + to);
                 } else {
                     toDefs.add(to);
-                    List<PropertyElement> beanProperties = toType.getBeanProperties(PropertyElementQuery.of(toType).includes(Set.of(to)));
-                    if (beanProperties.isEmpty()) {
+                    if (!hasPropertyWithName(toType, to)) {
                         throw new ProcessingException(element, "@Mapping(to=\"" + to + "\") specifies a property that doesn't exist in type " + toType.getName());
                     }
                 }
@@ -118,7 +117,7 @@ public final class MapperVisitor implements TypeElementVisitor<Object, Mapper> {
                             if (parameter.getType().getName().equals(Map.class.getName())) {
                                 break;
                             }
-                            if (parameter.getGenericType().getBeanProperties(new PropertyElementQuery().includes(Collections.singleton(propertyName))).isEmpty()) {
+                            if (!hasPropertyWithName(parameter.getGenericType(), propertyName)) {
                                 throw new ProcessingException(element, "@Mapping(from=\"" + from + "\") specifies property " + propertyName + " that doesn't exist in type " + parameter.getGenericType().getName());
                             }
                             break;
@@ -133,13 +132,18 @@ public final class MapperVisitor implements TypeElementVisitor<Object, Mapper> {
                         if (parameter.getType().getName().equals(Map.class.getName())) {
                             continue;
                         }
-                        if (parameter.getGenericType().getBeanProperties(new PropertyElementQuery().includes(Collections.singleton(propertyName))).isEmpty()) {
+                        if (!hasPropertyWithName(parameter.getGenericType(), propertyName)) {
                             throw new ProcessingException(element, "@Mapping(from=\"" + from + "\") specifies property " + propertyName + " that doesn't exist in type " + parameter.getGenericType().getName());
                         }
                     }
                 }
             });
         }
+    }
+
+    private boolean hasPropertyWithName(ClassElement element, String propertyName) {
+        return element.getBeanProperties(PropertyElementQuery.of(element).includes(Collections.singleton(propertyName)))
+            .stream().anyMatch(v -> !v.isExcluded());
     }
 
     @Override
