@@ -1,15 +1,13 @@
 package io.micronaut.docs.ioc.mappers
 
 import io.micronaut.context.ApplicationContext
-import io.micronaut.context.annotation.Property
 import spock.lang.AutoCleanup
 import spock.lang.PendingFeature
 import spock.lang.Shared
 import spock.lang.Specification
 
-@Property(name = "spec.name", value = "MappersSpec")
 class MappersSpec extends Specification {
-    @Shared @AutoCleanup ApplicationContext context = ApplicationContext.run()
+    @Shared @AutoCleanup ApplicationContext context = ApplicationContext.run(["spec.name": "MappersSpec"])
 
     @PendingFeature(reason = "Investigate Groovy incorrect method metadata and implementing default methods broken")
     void testMappers() {
