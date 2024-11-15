@@ -67,6 +67,7 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
      * The position of the visitor.
      */
     public static final int POSITION = -100;
+    private static final String ANN_LOMBOK_BUILDER = "lombok.Builder";
 
     private final Map<String, BeanIntrospectionWriter> writers = new LinkedHashMap<>(10);
 
@@ -180,62 +181,101 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
             AnnotationClassValue<?> builderClass = builder.annotationClassValue("builderClass").orElse(null);
             String[] writePrefixes = builder.getAnnotation("accessorStyle", AccessorsStyle.class)
                 .map(a -> a.stringValues("writePrefixes")).orElse(new String[]{""});
-            if (builderMethod != null) {
-                MethodElement methodElement = element
-                    .getEnclosedElement(ElementQuery.ALL_METHODS.onlyStatic()
-                        .filter(m -> m.getName().equals(builderMethod) && !m.getGenericReturnType().isVoid())
-                        .onlyAccessible(element))
-                    .orElse(null);
-                if (methodElement != null) {
-                    ClassElement returnType = methodElement.getGenericReturnType();
-                    if (returnType.isPublic() || returnType.getPackageName().equals(element.getPackageName())) {
-                        AnnotationValueBuilder<Introspected> replaceIntrospected = AnnotationValue.builder(introspected, RetentionPolicy.RUNTIME);
-                        replaceIntrospected.member("builderClass", new AnnotationClassValue<>(returnType.getName()));
-                        element.annotate(replaceIntrospected.build());
-                        AnnotationMetadata methodMetadata = methodElement.getMethodAnnotationMetadata().getTargetAnnotationMetadata();
+            processBuilderDefinition(
+                element,
+                context,
+                introspected,
+                index,
+                targetPackage,
+                builderMethod,
+                creatorMethod,
+                writePrefixes,
+                builderClass
+            );
+        } else if (element.hasDeclaredAnnotation(ANN_LOMBOK_BUILDER)) {
+            AnnotationValue<Annotation> lombokBuilder = element.getAnnotation(ANN_LOMBOK_BUILDER);
+            String builderMethod = lombokBuilder.stringValue("builderMethodName").orElse("builder");
+            MethodElement methodElement = element
+                .getEnclosedElement(ElementQuery.ALL_METHODS.onlyStatic()
+                    .filter(m -> m.getName().equals(builderMethod) && !m.getGenericReturnType().isVoid())
+                    .onlyAccessible(element))
+                .orElse(null);
+            if (methodElement == null) {
+                // Lombok processing not done yet, try again in the next round.
+                throw new ElementPostponedToNextRoundException(element);
+            }
+            String creatorMethod = lombokBuilder.stringValue("buildMethodName").orElse("build");
+            String[] writePrefixes = lombokBuilder.stringValue("setterPrefix").map(sp -> new String[] { sp }).orElse(new String[]{""});
+            processBuilderDefinition(
+                element,
+                context,
+                introspected,
+                index,
+                targetPackage,
+                builderMethod,
+                creatorMethod,
+                writePrefixes,
+                null
+            );
+        }
+    }
 
-                        handleBuilder(
-                            element,
-                            context,
-                            creatorMethod,
-                            writePrefixes,
-                            methodElement,
-                            null,
-                            returnType,
-                            methodMetadata,
-                            index,
-                            targetPackage
-                        );
-                    } else {
-                        context.fail("Builder return type is not public. The method must be static and accessible.", methodElement);
-                    }
-                } else {
-                    context.fail("Method specified by builderMethod not found. The method must be static and accessible.", element);
-                }
-            } else if (builderClass != null) {
-                ClassElement builderClassElement = context.getClassElement(builderClass.getName()).orElse(null);
-                if (builderClassElement != null) {
+    private void processBuilderDefinition(ClassElement element, VisitorContext context, AnnotationValue<Introspected> introspected, int index, String targetPackage, String builderMethod, String creatorMethod, String[] writePrefixes, AnnotationClassValue<?> builderClass) {
+        if (builderMethod != null) {
+            MethodElement methodElement = element
+                .getEnclosedElement(ElementQuery.ALL_METHODS.onlyStatic()
+                    .filter(m -> m.getName().equals(builderMethod) && !m.getGenericReturnType().isVoid())
+                    .onlyAccessible(element))
+                .orElse(null);
+            if (methodElement != null) {
+                ClassElement returnType = methodElement.getGenericReturnType();
+                if (returnType.isPublic() || returnType.getPackageName().equals(element.getPackageName())) {
                     AnnotationValueBuilder<Introspected> replaceIntrospected = AnnotationValue.builder(introspected, RetentionPolicy.RUNTIME);
-                    replaceIntrospected.member("builderClass", new AnnotationClassValue<>(builderClassElement.getName()));
+                    replaceIntrospected.member("builderClass", new AnnotationClassValue<>(returnType.getName()));
                     element.annotate(replaceIntrospected.build());
+                    AnnotationMetadata methodMetadata = methodElement.getMethodAnnotationMetadata().getTargetAnnotationMetadata();
 
                     handleBuilder(
                         element,
                         context,
                         creatorMethod,
                         writePrefixes,
-                        builderClassElement.getPrimaryConstructor().orElse(null),
-                        builderClassElement.getDefaultConstructor().orElse(null),
-                        builderClassElement,
-                        builderClassElement.getTargetAnnotationMetadata(),
+                        methodElement,
+                        null,
+                        returnType,
+                        methodMetadata,
                         index,
-                        targetPackage);
+                        targetPackage
+                    );
                 } else {
-                    context.fail("Builder class not found on compilation classpath: " + builderClass.getName(), element);
+                    context.fail("Builder return type is not public. The method must be static and accessible.", methodElement);
                 }
             } else {
-                context.fail("When specifying the 'builder' member of @Introspected you must supply either a builderClass or builderMethod", element);
+                context.fail("Method " + builderMethod + "() specified by builderMethod not found. The method must be static and accessible.", element);
             }
+        } else if (builderClass != null) {
+            ClassElement builderClassElement = context.getClassElement(builderClass.getName()).orElse(null);
+            if (builderClassElement != null) {
+                AnnotationValueBuilder<Introspected> replaceIntrospected = AnnotationValue.builder(introspected, RetentionPolicy.RUNTIME);
+                replaceIntrospected.member("builderClass", new AnnotationClassValue<>(builderClassElement.getName()));
+                element.annotate(replaceIntrospected.build());
+
+                handleBuilder(
+                    element,
+                    context,
+                    creatorMethod,
+                    writePrefixes,
+                    builderClassElement.getPrimaryConstructor().orElse(null),
+                    builderClassElement.getDefaultConstructor().orElse(null),
+                    builderClassElement,
+                    builderClassElement.getTargetAnnotationMetadata(),
+                    index,
+                    targetPackage);
+            } else {
+                context.fail("Builder class not found on compilation classpath: " + builderClass.getName(), element);
+            }
+        } else {
+            context.fail("When specifying the 'builder' member of @Introspected you must supply either a builderClass or builderMethod", element);
         }
     }
 
@@ -380,13 +420,18 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
         List<PropertyElement> beanProperties = ce.getBeanProperties(propertyElementQuery).stream()
             .filter(p -> !p.isExcluded())
             .toList();
-        Optional<MethodElement> constructorElement = ce.getPrimaryConstructor();
-        constructorElement.ifPresent(constructorEl -> {
-            if (ArrayUtils.isNotEmpty(constructorEl.getParameters())) {
-                writer.visitConstructor(constructorEl);
-            }
-        });
-        ce.getDefaultConstructor().ifPresent(writer::visitDefaultConstructor);
+        // unfortunately sometimes we don't see the Lombok transformations
+        // so assume if the class is annotated with Lombok builder we cannot
+        // access the constructor.
+        if (!ce.hasDeclaredAnnotation(ANN_LOMBOK_BUILDER)) {
+            Optional<MethodElement> constructorElement = ce.getPrimaryConstructor();
+            constructorElement.ifPresent(constructorEl -> {
+                if (ArrayUtils.isNotEmpty(constructorEl.getParameters())) {
+                    writer.visitConstructor(constructorEl);
+                }
+            });
+            ce.getDefaultConstructor().ifPresent(writer::visitDefaultConstructor);
+        }
 
         for (PropertyElement beanProperty : beanProperties) {
             if (beanProperty.isExcluded()) {

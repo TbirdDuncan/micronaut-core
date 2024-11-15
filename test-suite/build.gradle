@@ -118,3 +118,4 @@ test {
     // Prevent scanning classes with missing classes
     exclude '**/classnotfound/**'
 }
+

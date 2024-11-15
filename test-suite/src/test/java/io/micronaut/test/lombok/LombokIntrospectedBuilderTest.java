@@ -1,5 +1,7 @@
 package io.micronaut.test.lombok;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import io.micronaut.core.beans.BeanIntrospection;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -17,7 +19,19 @@ public class LombokIntrospectedBuilderTest {
         RobotEntity robotEntity = builder.with("name", "foo")
             .build();
 
-        Assertions.assertEquals("foo", robotEntity.getName());
+        assertEquals("foo", robotEntity.getName());
+    }
+
+    @Test
+    void testLombokBuilder2() {
+        BeanIntrospection.Builder<MyEntity> builder = BeanIntrospection.getIntrospection(MyEntity.class)
+            .builder();
+        MyEntity.MyEntityBuilder builder1 = MyEntity.builder();
+        builder.with("name", "foo");
+        builder.with("id", "123");
+        MyEntity myEntity = builder.build();
+        assertEquals("foo", myEntity.getName());
+        assertEquals("123", myEntity.getId());
     }
 
     @Test
@@ -29,7 +43,7 @@ public class LombokIntrospectedBuilderTest {
         SimpleEntity simpleEntity = builder.with("id", id)
             .build();
 
-        Assertions.assertEquals(id, simpleEntity.getId());
+        assertEquals(id, simpleEntity.getId());
 
         BeanIntrospection<SimpleEntity.CompartmentCreationTimeIndexPrefix> innerClassIntrospection =
             BeanIntrospection.getIntrospection(SimpleEntity.CompartmentCreationTimeIndexPrefix.class);
@@ -42,7 +56,7 @@ public class LombokIntrospectedBuilderTest {
         SimpleEntity.CompartmentCreationTimeIndexPrefix innerClassEntity =
             innerClassBuilder.with("compartmentId", "c1").with("timeCreated", current).build();
 
-        Assertions.assertEquals("c1", innerClassEntity.getCompartmentId());
-        Assertions.assertEquals(current, innerClassEntity.getTimeCreated());
+        assertEquals("c1", innerClassEntity.getCompartmentId());
+        assertEquals(current, innerClassEntity.getTimeCreated());
     }
 }
