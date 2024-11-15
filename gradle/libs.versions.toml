@@ -13,7 +13,6 @@ htmlunit = "2.64.0"
 httpcomponents-client = "4.5.13"
 jakarta-inject-api = "2.0.1"
 jakarta-inject-tck = "2.0.1"
-japicmp-gradle-plugin="0.4.3"
 javax-inject = "1"
 javax-persistence = "2.2"
 jetbrains-annotations = "23.0.0"
@@ -23,12 +22,9 @@ jsr107 = "1.1.1"
 javax-el = "3.0.1-b12"
 javax-el-impl = "2.2.1-b05"
 logbook-netty = "2.14.0"
-micronaut-build-plugins="5.4.10"
-native-gradle-plugin = "0.10.2"
 selenium = "3.141.59"
 smallrye = "5.5.0"
 systemlambda = "1.2.1"
-tomlj="1.1.1"
 vertx = "3.9.13"
 wiremock = "2.33.2"
 
@@ -393,7 +389,6 @@ htmlsanitycheck = { module = "org.aim42:htmlSanityCheck", version.ref = "htmlsan
 jakarta-inject-api = { module = "jakarta.inject:jakarta.inject-api", version.ref = "jakarta-inject-api" }
 jakarta-inject-tck = { module = "jakarta.inject:jakarta.inject-tck", version.ref = "jakarta-inject-tck" }
 
-japicmp-gradle-plugin = { module = "me.champeau.gradle:japicmp-gradle-plugin", version.ref = "japicmp-gradle-plugin"}
 javax-el = { module = "org.glassfish:javax.el", version.ref = "javax-el" }
 javax-el-impl = { module = "org.glassfish:javax.el", version.ref = "javax-el" }
 javax-inject = { module = "javax.inject:javax.inject", version.ref = "javax-inject" }
@@ -453,13 +448,10 @@ smallrye = { module = "io.smallrye:smallrye-fault-tolerance", version.ref = "sma
 
 systemlambda = { module = "com.github.stefanbirkner:system-lambda", version.ref = "systemlambda" }
 
-micronaut-build-plugins = { module = "io.micronaut.build.internal:micronaut-gradle-plugins", version.ref="micronaut-build-plugins"}
 micronaut-tracing-jaeger = { module = "io.micronaut.tracing:micronaut-tracing-jaeger" }
 micronaut-tracing-zipkin = { module = "io.micronaut.tracing:micronaut-tracing-zipkin" }
-native-gradle-plugin = { module = "org.graalvm.buildtools.native:org.graalvm.buildtools.native.gradle.plugin", version.ref = "native-gradle-plugin"}
 
 testcontainers-spock = { module = "org.testcontainers:spock", version.ref = "managed-testcontainers" }
-tomlj = { module = "org.tomlj:tomlj", version.ref="tomlj"}
 
 vertx = { module = "io.vertx:vertx-core", version.ref = "vertx" }
 vertx-webclient = { module = "io.vertx:vertx-web-client", version.ref = "vertx" }
