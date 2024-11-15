@@ -2,7 +2,6 @@ plugins {
     id "io.micronaut.build.internal.convention-test-library"
     id 'io.micronaut.build.internal.functional-test'
     id 'java-test-fixtures'
-    alias(libs.plugins.webdriver)
 }
 
 micronautBuild {
