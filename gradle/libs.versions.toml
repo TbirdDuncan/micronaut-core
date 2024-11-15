@@ -384,7 +384,6 @@ hibernate = { module = "org.hibernate:hibernate-core", version.ref = "hibernate"
 hibernate-validator = { module = "org.hibernate:hibernate-validator", version.ref = "hibernate-validator" }
 
 htmlunit = { module = "net.sourceforge.htmlunit:htmlunit", version.ref = "htmlunit" }
-htmlsanitycheck = { module = "org.aim42:htmlSanityCheck", version.ref = "htmlsanitycheck"}
 
 jakarta-inject-api = { module = "jakarta.inject:jakarta.inject-api", version.ref = "jakarta-inject-api" }
 jakarta-inject-tck = { module = "jakarta.inject:jakarta.inject-tck", version.ref = "jakarta-inject-tck" }
