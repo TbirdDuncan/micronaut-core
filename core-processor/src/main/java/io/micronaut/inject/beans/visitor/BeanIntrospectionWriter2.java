@@ -30,7 +30,7 @@ import io.micronaut.core.type.Argument;
 import io.micronaut.core.util.ArrayUtils;
 import io.micronaut.inject.annotation.AnnotationMetadataHierarchy;
 import io.micronaut.inject.annotation.AnnotationMetadataReference;
-import io.micronaut.inject.annotation.AnnotationMetadataStatement;
+import io.micronaut.inject.annotation.AnnotationMetadataGenUtils;
 import io.micronaut.inject.annotation.MutableAnnotationMetadata;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.Element;
@@ -260,7 +260,7 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
         this.introspectionTypeDef = ClassTypeDef.of(introspectionName);
         this.dispatchWriter = new DispatchWriter2();
         this.annotationMetadata = annotationMetadata.getTargetAnnotationMetadata();
-        this.originatingElements = OriginatingElements.of(beanClassElement);
+        this.originatingElements = OriginatingElements.of(originatingElement);
         evaluatedExpressionProcessor = new EvaluatedExpressionProcessor(visitorContext, beanClassElement);
         evaluatedExpressionProcessor.processEvaluatedExpressions(annotationMetadata, null);
     }
@@ -456,7 +456,7 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
                     beanClassElement,
                     introspectionTypeDef,
                     beanPropertyData.name,
-                    beanPropertyData.readType,
+                    beanPropertyData.type,
                     loadTypeMethods
                 ),
                 ExpressionDef.constant(beanPropertyData.getDispatchIndex),
@@ -475,7 +475,7 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
                     beanClassElement,
                     introspectionTypeDef,
                     beanPropertyData.name,
-                    beanPropertyData.writeType,
+                    beanPropertyData.type,
                     loadTypeMethods
                 ),
                 ExpressionDef.constant(beanPropertyData.getDispatchIndex),
@@ -520,7 +520,7 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
         );
     }
 
-    private ExpressionDef pushBeanMethodReference(BeanMethodData beanMethodData, Map<String, MethodDef> loadTypeMethods) {
+    private ExpressionDef newBeanMethodRef(BeanMethodData beanMethodData, Map<String, MethodDef> loadTypeMethods) {
         return ClassTypeDef.of(AbstractInitializableBeanIntrospection.BeanMethodRef.class)
             .instantiate(
                 BEAN_METHOD_REF_CONSTRUCTOR,
@@ -549,20 +549,20 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
             );
     }
 
-    private ExpressionDef pushEnumConstantReference(EnumConstantElement enumConstantElement, Map<String, MethodDef> loadTypeMethods) {
+    private ExpressionDef newEnumConstantRef(EnumConstantElement enumConstantElement, Map<String, MethodDef> loadTypeMethods) {
         return ClassTypeDef.of(
             AbstractEnumBeanIntrospectionAndReference.EnumConstantDynamicRef.class
         ).instantiate(
             ENUM_CONSTANT_DYNAMIC_REF_CONSTRUCTOR,
 
             // 1: push annotation class value
-            AnnotationMetadataStatement.invokeLoadClassValueMethod(introspectionTypeDef, loadTypeMethods, new AnnotationClassValue<>(enumConstantElement.getOwningType().getName())),
+            AnnotationMetadataGenUtils.invokeLoadClassValueMethod(introspectionTypeDef, loadTypeMethods, new AnnotationClassValue<>(enumConstantElement.getOwningType().getName())),
             // 2: push enum name
             ExpressionDef.constant(enumConstantElement.getName()),
             // 3: annotation metadata
             enumConstantElement.getAnnotationMetadata() == null ? (
                 ClassTypeDef.of(AnnotationMetadata.class).getStaticField("EMPTY_METADATA", TypeDef.of(AnnotationMetadata.class))
-            ) : getAnnotationMetadataExpression(annotationMetadata, loadTypeMethods)
+            ) : getAnnotationMetadataExpression(enumConstantElement.getAnnotationMetadata(), loadTypeMethods)
         );
     }
 
@@ -656,7 +656,7 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
                     ClassTypeDef.of(AbstractInitializableBeanIntrospection.BeanMethodRef.class).array()
                         .instantiate(
                             beanMethods.stream()
-                                .map(e -> pushBeanMethodReference(e, loadTypeMethods))
+                                .map(e -> newBeanMethodRef(e, loadTypeMethods))
                                 .toList()
                         )
                 )
@@ -672,7 +672,7 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
                     ClassTypeDef.of(AbstractEnumBeanIntrospectionAndReference.EnumConstantDynamicRef.class).array()
                         .instantiate(
                             ((EnumElement) beanClassElement).elements().stream()
-                                .map(e -> pushEnumConstantReference(e, loadTypeMethods))
+                                .map(e -> newEnumConstantRef(e, loadTypeMethods))
                                 .toList()
                         )
                 )
@@ -706,9 +706,9 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
         }
 
         List<StatementDef> statements = new ArrayList<>();
-        AnnotationMetadataStatement.writeAnnotationDefault(statements, introspectionTypeDef, annotationMetadata, loadTypeMethods);
+        AnnotationMetadataGenUtils.writeAnnotationDefault(statements, introspectionTypeDef, annotationMetadata, loadTypeMethods);
 
-        FieldDef annotationMetadataField = AnnotationMetadataStatement.getAnnotationMetadataField(introspectionTypeDef, annotationMetadata, loadTypeMethods);
+        FieldDef annotationMetadataField = AnnotationMetadataGenUtils.getAnnotationMetadataField(introspectionTypeDef, annotationMetadata, loadTypeMethods);
         if (annotationMetadataField != null) {
             classDefBuilder.addField(
                 annotationMetadataField
@@ -821,7 +821,7 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
         loadTypeMethods.values().forEach(classDefBuilder::addMethod);
 
         try (OutputStream outputStream = classWriterOutputVisitor.visitClass(introspectionName, getOriginatingElements())) {
-            outputStream.write(new ByteCodeWriter().write(classDefBuilder.build()));
+            outputStream.write(new ByteCodeWriter(false, true).write(classDefBuilder.build()));
         }
     }
 
@@ -883,7 +883,7 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
                     String propertyName = indexByAnnotationAndValue.get(new AnnotationWithValue(annotationName, e));
                     int propertyIndex = getPropertyIndex(propertyName);
                     return aThis.invoke(FIND_PROPERTY_BY_INDEX_METHOD, ExpressionDef.constant(propertyIndex));
-                }))).returning()
+                })), ExpressionDef.nullValue()).returning()
             );
         }
         statements.add(ExpressionDef.nullValue().returning());
@@ -923,14 +923,16 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
     }
 
     private MethodDef getInstantiateMethod(MethodElement constructor, String methodName, Class<?>... args) {
-        return MethodDef.builder(methodName).addModifiers(Modifier.PUBLIC)
+        return MethodDef.builder(methodName)
+            .addModifiers(Modifier.PUBLIC)
             .addParameters(args)
+            .returns(TypeDef.OBJECT)
             .build((aThis, methodParameters) -> {
                 if (args.length == 0) {
                     return WriterGenUtils.invokeBeanConstructor(constructor, true, null).returning();
                 } else {
                     return WriterGenUtils.invokeBeanConstructor(constructor, true, (index, parameter)
-                        -> methodParameters.get(0).arrayElement(index).cast(TypeDef.of(parameter.getType()))).returning();
+                        -> methodParameters.get(0).arrayElement(index).cast(TypeDef.erasure(parameter.getType()))).returning();
                 }
             });
     }
@@ -945,14 +947,14 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
         if (annotationMetadata.isEmpty()) {
             return ExpressionDef.nullValue();
         } else if (annotationMetadata instanceof AnnotationMetadataReference annotationMetadataReference) {
-            return AnnotationMetadataStatement.annotationMetadataReference(annotationMetadataReference);
+            return AnnotationMetadataGenUtils.annotationMetadataReference(annotationMetadataReference);
         } else if (annotationMetadata instanceof AnnotationMetadataHierarchy annotationMetadataHierarchy) {
-            return AnnotationMetadataStatement.instantiateNewMetadataHierarchy(
+            return AnnotationMetadataGenUtils.instantiateNewMetadataHierarchy(
                 introspectionTypeDef,
                 annotationMetadataHierarchy,
                 loadTypeMethods);
         } else if (annotationMetadata instanceof MutableAnnotationMetadata mutableAnnotationMetadata) {
-            return AnnotationMetadataStatement.instantiateNewMetadata(
+            return AnnotationMetadataGenUtils.instantiateNewMetadata(
                 introspectionTypeDef,
                 mutableAnnotationMetadata,
                 loadTypeMethods);
@@ -1147,7 +1149,7 @@ final class BeanIntrospectionWriter2 implements OriginatingElements, ClassOutput
 
                         Integer propertyIndex = propertyNames.get(parameter.getName());
                         if (propertyIndex != null) {
-                            ExpressionDef.Cast newPropertyValue = value.cast(TypeDef.of(parameter.getType()));
+                            ExpressionDef.Cast newPropertyValue = value.cast(TypeDef.erasure(parameter.getType()));
                             if (propertyNames.size() == 1) {
                                 return newPropertyValue;
                             }

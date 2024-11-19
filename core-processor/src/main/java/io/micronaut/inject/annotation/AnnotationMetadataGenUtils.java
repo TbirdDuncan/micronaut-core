@@ -60,13 +60,14 @@ import java.util.stream.Collectors;
  * @since 1.0
  */
 @Internal
-public class AnnotationMetadataStatement {
+public class AnnotationMetadataGenUtils {
 
     private static final ClassTypeDef TYPE_ANNOTATION_METADATA = ClassTypeDef.of(AnnotationMetadata.class);
     private static final ClassTypeDef TYPE_DEFAULT_ANNOTATION_METADATA = ClassTypeDef.of(DefaultAnnotationMetadata.class);
     private static final ClassTypeDef TYPE_DEFAULT_ANNOTATION_METADATA_HIERARCHY = ClassTypeDef.of(AnnotationMetadataHierarchy.class);
     private static final ClassTypeDef TYPE_ANNOTATION_CLASS_VALUE = ClassTypeDef.of(AnnotationClassValue.class);
     private static final ClassTypeDef MAP_TYPE = ClassTypeDef.of(Map.class);
+    private static final ClassTypeDef MAP_ENTRY_TYPE = ClassTypeDef.of(Map.Entry.class);
     private static final ClassTypeDef LIST_TYPE = ClassTypeDef.of(List.class);
 
     private static final String LOAD_CLASS_PREFIX = "$micronaut_load_class_value_";
@@ -321,7 +322,7 @@ public class AnnotationMetadataStatement {
                 // 4th argument: all annotations
                 pushCreateAnnotationData(owningType, annotationMetadata.allAnnotations, loadTypeMethods, annotationMetadata.getSourceRetentionAnnotations()),
                 // 5th argument: annotations by stereotype,
-                stringMapOf(annotationsByStereotype, false, Collections.emptyList(), AnnotationMetadataStatement::listOfString),
+                stringMapOf(annotationsByStereotype, false, Collections.emptyList(), AnnotationMetadataGenUtils::listOfString),
                 // 6th argument: has property expressions,
                 ExpressionDef.constant(annotationMetadata.hasPropertyExpressions()),
                 // 7th argument: has evaluated expressions
@@ -548,13 +549,13 @@ public class AnnotationMetadataStatement {
             initializer = ClassTypeDef.of(AnnotationMetadata.class)
                 .getStaticField(AbstractAnnotationMetadataWriter.FIELD_EMPTY_METADATA, ClassTypeDef.of(AnnotationMetadata.class));
         } else if (annotationMetadata instanceof MutableAnnotationMetadata mutableAnnotationMetadata) {
-            initializer = AnnotationMetadataStatement.instantiateNewMetadata(
+            initializer = AnnotationMetadataGenUtils.instantiateNewMetadata(
                 targetType,
                 mutableAnnotationMetadata,
                 loadTypeMethods
             );
         } else if (annotationMetadata instanceof AnnotationMetadataHierarchy annotationMetadataHierarchy) {
-            initializer = AnnotationMetadataStatement.instantiateNewMetadataHierarchy(targetType, annotationMetadataHierarchy, loadTypeMethods);
+            initializer = AnnotationMetadataGenUtils.instantiateNewMetadataHierarchy(targetType, annotationMetadataHierarchy, loadTypeMethods);
         } else {
             throw new IllegalStateException("Unknown annotation metadata: " + annotationMetadata);
         }
@@ -575,7 +576,7 @@ public class AnnotationMetadataStatement {
             annotationMetadata = annotationMetadataHierarchy.merge();
         }
         if (annotationMetadata instanceof MutableAnnotationMetadata mutableAnnotationMetadata) {
-            AnnotationMetadataStatement.writeAnnotationDefaults(
+            AnnotationMetadataGenUtils.writeAnnotationDefaults(
                 statements,
                 targetClassType,
                 mutableAnnotationMetadata,
@@ -610,19 +611,28 @@ public class AnnotationMetadataStatement {
             return MAP_TYPE.invokeStatic("of", parameterTypes, MAP_TYPE, values);
         }
         return MAP_TYPE.invokeStatic("ofEntries",
-            List.of(TypeDef.of(Map.Entry[].class)),
+            List.of(MAP_ENTRY_TYPE.array()),
             MAP_TYPE,
-            ClassTypeDef.of(Map.Entry.class)
+            MAP_ENTRY_TYPE
                 .array()
                 .instantiate(
-                    entrySet.stream().<ExpressionDef>map(e -> MAP_TYPE.invokeStatic(
-                        "entry",
-                        List.of(TypeDef.OBJECT, TypeDef.OBJECT),
-                        MAP_TYPE,
-                        ExpressionDef.constant(e.getKey()),
-                        objAsExpression.apply(e.getValue())
-                    )).toList()
+                    entrySet.stream().map(e ->
+                        mapEntry(
+                            ExpressionDef.constant(e.getKey()),
+                            objAsExpression.apply(e.getValue())
+                        )
+                    ).toList()
                 )
+        );
+    }
+
+    private static ExpressionDef mapEntry(ExpressionDef key, ExpressionDef value) {
+        return MAP_TYPE.invokeStatic(
+            "entry",
+            List.of(TypeDef.OBJECT, TypeDef.OBJECT),
+            MAP_ENTRY_TYPE,
+            key,
+            value
         );
     }
 
@@ -635,25 +645,25 @@ public class AnnotationMetadataStatement {
     }
 
     public static ExpressionDef listOfString(List<String> strings) {
-        if (strings != null) {
-            strings = strings.stream().filter(Objects::nonNull).toList();
+        return listOf(strings.stream().<ExpressionDef>map(ExpressionDef::constant).toList());
+    }
+
+    public static ExpressionDef listOf(List<ExpressionDef> expressions) {
+        if (expressions != null) {
+            expressions = expressions.stream().filter(Objects::nonNull).toList();
         }
-        if (strings == null || strings.isEmpty()) {
+        if (expressions == null || expressions.isEmpty()) {
             return LIST_TYPE.invokeStatic("of", LIST_TYPE);
         }
-        if (strings.size() < 11) {
-            List<TypeDef> parameterTypes = new ArrayList<>(strings.size());
-            List<ExpressionDef> values = new ArrayList<>(strings.size());
-            for (String name : strings) {
+        if (expressions.size() < 11) {
+            List<TypeDef> parameterTypes = new ArrayList<>(expressions.size());
+            for (ExpressionDef ignore : expressions) {
                 parameterTypes.add(TypeDef.OBJECT);
-                values.add(ExpressionDef.constant(name));
             }
-            return LIST_TYPE.invokeStatic("of", parameterTypes, LIST_TYPE, values);
+            return LIST_TYPE.invokeStatic("of", parameterTypes, LIST_TYPE, expressions);
         } else {
             return LIST_TYPE.invokeStatic("of", List.of(TypeDef.OBJECT.array()), LIST_TYPE,
-                TypeDef.OBJECT.array().instantiate(
-                    strings.stream().map(ExpressionDef::constant).toList()
-                )
+                TypeDef.OBJECT.array().instantiate(expressions)
             );
         }
     }

@@ -272,9 +272,9 @@ public final class DispatchWriter2 implements ClassOutputWriter {
 
                         ExpressionDef.constant(ClassTypeDef.of(methodElement.getDeclaringType())),
                         ExpressionDef.constant(methodElement.getName()),
-                        ClassTypeDef.of(Class.class).array().instantiate(
+                        TypeDef.CLASS.array().instantiate(
                             Arrays.stream(methodElement.getSuspendParameters())
-                                .map(p -> ExpressionDef.constant(TypeDef.of(p.getType())))
+                                .map(p -> ExpressionDef.constant(TypeDef.erasure(p.getType())))
                                 .toList()
                         )
                     ).returning();
@@ -431,7 +431,7 @@ public final class DispatchWriter2 implements ClassOutputWriter {
 
         @Override
         public ExpressionDef dispatchExpression(ExpressionDef bean) {
-            final ClassTypeDef propertyType = ClassTypeDef.of(beanField.getType());
+            final TypeDef propertyType = TypeDef.of(beanField.getType());
             final ClassTypeDef targetType = ClassTypeDef.of(beanField.getOwningType());
 
             if (beanField.isReflectionRequired()) {
@@ -486,7 +486,7 @@ public final class DispatchWriter2 implements ClassOutputWriter {
 
         @Override
         public StatementDef dispatchOne(int caseValue, ExpressionDef caseExpression, ExpressionDef target, ExpressionDef value) {
-            final ClassTypeDef propertyType = ClassTypeDef.of(beanField.getType());
+            final TypeDef propertyType = TypeDef.of(beanField.getType());
             final ClassTypeDef targetType = ClassTypeDef.of(beanField.getOwningType());
             if (beanField.isReflectionRequired()) {
                 return TYPE_REFLECTION_UTILS.invokeStatic(METHOD_SET_FIELD_VALUE,
@@ -496,7 +496,7 @@ public final class DispatchWriter2 implements ClassOutputWriter {
                     value // Field value
                 ).after(ExpressionDef.nullValue().returning());
             } else {
-                return target.cast(propertyType)
+                return target.cast(targetType)
                     .field(beanField)
                     .put(value.cast(propertyType))
                     .after(ExpressionDef.nullValue().returning());
@@ -698,7 +698,7 @@ public final class DispatchWriter2 implements ClassOutputWriter {
 
                 methodElement.isStatic() ? ExpressionDef.nullValue() : target,
                 new VariableDef.This().invoke(GET_ACCESSIBLE_TARGET_METHOD, ExpressionDef.constant(methodIndex)),
-                TypeDef.OBJECT.array().instantiate(value)
+                methodElement.getSuspendParameters().length > 0 ? TypeDef.OBJECT.array().instantiate(value) : TypeDef.OBJECT.array().instantiate()
             );
         }
 

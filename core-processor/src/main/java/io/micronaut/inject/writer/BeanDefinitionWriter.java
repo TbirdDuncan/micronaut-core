@@ -1935,7 +1935,6 @@ public class BeanDefinitionWriter extends AbstractClassFileWriter implements Bea
 
         if (executableMethodsDefinitionWriter == null) {
             executableMethodsDefinitionWriter = new ExecutableMethodsDefinitionWriter2(
-                visitorContext,
                 evaluatedExpressionProcessor,
                 annotationMetadata,
                 beanDefinitionName,

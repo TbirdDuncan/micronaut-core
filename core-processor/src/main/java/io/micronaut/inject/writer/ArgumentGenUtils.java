@@ -8,7 +8,7 @@ import io.micronaut.core.type.Argument;
 import io.micronaut.core.util.CollectionUtils;
 import io.micronaut.inject.annotation.AnnotationMetadataHierarchy;
 import io.micronaut.inject.annotation.AnnotationMetadataReference;
-import io.micronaut.inject.annotation.AnnotationMetadataStatement;
+import io.micronaut.inject.annotation.AnnotationMetadataGenUtils;
 import io.micronaut.inject.annotation.MutableAnnotationMetadata;
 import io.micronaut.inject.ast.ArrayableClassElement;
 import io.micronaut.inject.ast.ClassElement;
@@ -236,7 +236,7 @@ public class ArgumentGenUtils {
                 annotationMetadata
             );
 
-            values.add(AnnotationMetadataStatement.instantiateNewMetadata(
+            values.add(AnnotationMetadataGenUtils.instantiateNewMetadata(
                 owningType,
                 (MutableAnnotationMetadata) annotationMetadata,
                 loadTypeMethods
@@ -437,7 +437,7 @@ public class ArgumentGenUtils {
             );
 
             values.add(
-                AnnotationMetadataStatement.instantiateNewMetadata(
+                AnnotationMetadataGenUtils.instantiateNewMetadata(
                     owningType,
                     (MutableAnnotationMetadata) annotationMetadata,
                     loadTypeMethods
@@ -537,7 +537,7 @@ public class ArgumentGenUtils {
             // 1st argument: the type
             ExpressionDef.constant(type),
             // 2nd argument: the annotation metadata
-            AnnotationMetadataStatement.annotationMetadataReference(annotationMetadata),
+            AnnotationMetadataGenUtils.annotationMetadataReference(annotationMetadata),
             // 3rd argument: generics
             ClassTypeDef.of(Class.class).array().instantiate(
                 Arrays.stream(generics).map(g -> ExpressionDef.constant(TypeDef.erasure(g))).toList()

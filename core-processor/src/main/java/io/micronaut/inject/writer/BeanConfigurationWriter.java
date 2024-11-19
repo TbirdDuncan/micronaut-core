@@ -20,7 +20,7 @@ import io.micronaut.core.annotation.AnnotationMetadata;
 import io.micronaut.core.annotation.Generated;
 import io.micronaut.core.annotation.Internal;
 import io.micronaut.inject.BeanConfiguration;
-import io.micronaut.inject.annotation.AnnotationMetadataStatement;
+import io.micronaut.inject.annotation.AnnotationMetadataGenUtils;
 import io.micronaut.inject.ast.Element;
 import io.micronaut.sourcegen.ByteCodeWriter;
 import io.micronaut.sourcegen.model.AnnotationDef;
@@ -39,7 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.micronaut.inject.annotation.AnnotationMetadataStatement.getAnnotationMetadataMethodDef;
+import static io.micronaut.inject.annotation.AnnotationMetadataGenUtils.getAnnotationMetadataMethodDef;
 
 /**
  * Writes configuration classes for configuration packages using ASM.
@@ -106,9 +106,9 @@ public class BeanConfigurationWriter implements ClassOutputWriter {
         Map<String, MethodDef> loadTypeMethods = new HashMap<>();
         // write the static initializers for the annotation metadata
         List<StatementDef> staticInit = new ArrayList<>();
-        AnnotationMetadataStatement.writeAnnotationDefault(staticInit, targetType, annotationMetadata, loadTypeMethods);
+        AnnotationMetadataGenUtils.writeAnnotationDefault(staticInit, targetType, annotationMetadata, loadTypeMethods);
 
-        FieldDef annotationMetadataField = AnnotationMetadataStatement.getAnnotationMetadataField(
+        FieldDef annotationMetadataField = AnnotationMetadataGenUtils.getAnnotationMetadataField(
             targetType,
             annotationMetadata,
             loadTypeMethods

@@ -22,14 +22,13 @@ import io.micronaut.core.annotation.Internal;
 import io.micronaut.core.reflect.ReflectionUtils;
 import io.micronaut.core.type.Argument;
 import io.micronaut.inject.ExecutableMethod;
+import io.micronaut.inject.annotation.AnnotationMetadataGenUtils;
 import io.micronaut.inject.annotation.AnnotationMetadataHierarchy;
 import io.micronaut.inject.annotation.AnnotationMetadataReference;
-import io.micronaut.inject.annotation.AnnotationMetadataStatement;
 import io.micronaut.inject.annotation.MutableAnnotationMetadata;
 import io.micronaut.inject.ast.ClassElement;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.TypedElement;
-import io.micronaut.inject.visitor.VisitorContext;
 import io.micronaut.sourcegen.ByteCodeWriter;
 import io.micronaut.sourcegen.model.ClassDef;
 import io.micronaut.sourcegen.model.ClassTypeDef;
@@ -111,8 +110,7 @@ public class ExecutableMethodsDefinitionWriter2 implements ClassOutputWriter {
 
     private final OriginatingElements originatingElements;
 
-    public ExecutableMethodsDefinitionWriter2(VisitorContext visitorContext,
-                                              EvaluatedExpressionProcessor evaluatedExpressionProcessor,
+    public ExecutableMethodsDefinitionWriter2(EvaluatedExpressionProcessor evaluatedExpressionProcessor,
                                               AnnotationMetadata annotationMetadataWithDefaults,
                                               String beanDefinitionClassName,
                                               String beanDefinitionReferenceClassName,
@@ -434,19 +432,19 @@ public class ExecutableMethodsDefinitionWriter2 implements ClassOutputWriter {
         if (annotationMetadata == AnnotationMetadata.EMPTY_METADATA || annotationMetadata.isEmpty()) {
             return ExpressionDef.nullValue();
         } else if (annotationMetadata instanceof AnnotationMetadataReference annotationMetadataReference) {
-            return AnnotationMetadataStatement.annotationMetadataReference(annotationMetadataReference);
+            return AnnotationMetadataGenUtils.annotationMetadataReference(annotationMetadataReference);
         } else if (annotationMetadata instanceof AnnotationMetadataHierarchy annotationMetadataHierarchy) {
             MutableAnnotationMetadata.contributeDefaults(
                 annotationMetadataWithDefaults,
                 annotationMetadataHierarchy
             );
-            return AnnotationMetadataStatement.instantiateNewMetadataHierarchy(thisType, annotationMetadataHierarchy, loadTypeMethods);
+            return AnnotationMetadataGenUtils.instantiateNewMetadataHierarchy(thisType, annotationMetadataHierarchy, loadTypeMethods);
         } else if (annotationMetadata instanceof MutableAnnotationMetadata mutableAnnotationMetadata) {
             MutableAnnotationMetadata.contributeDefaults(
                 annotationMetadataWithDefaults,
                 annotationMetadata
             );
-            return AnnotationMetadataStatement.instantiateNewMetadata(thisType, mutableAnnotationMetadata, loadTypeMethods);
+            return AnnotationMetadataGenUtils.instantiateNewMetadata(thisType, mutableAnnotationMetadata, loadTypeMethods);
         } else {
             throw new IllegalStateException("Unknown metadata: " + annotationMetadata);
         }
