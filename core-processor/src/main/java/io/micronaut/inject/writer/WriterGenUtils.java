@@ -94,17 +94,6 @@ public final class WriterGenUtils {
         boolean isConstructor = constructor.getName().equals("<init>");
         boolean isCompanion = constructor.getOwningType().getSimpleName().endsWith("$Companion");
 
-        List<ParameterElement> constructorArguments = Arrays.asList(constructor.getParameters());
-        boolean isKotlinDefault = allowKotlinDefaults && hasKotlinDefaultsParameters(constructorArguments);
-
-        ExpressionDef[] masksExpressions = null;
-        if (isKotlinDefault) {
-            int numberOfMasks = calculateNumberOfKotlinDefaultsMasks(constructorArguments);
-            // Calculate the Kotlin defaults mask
-            // Every bit indicated true/false if the parameter should have the default value set
-            masksExpressions = computeKotlinDefaultsMask(numberOfMasks, argumentValueProvider, argumentValueIsPresentProvider, constructorArguments);
-        }
-
         List<ExpressionDef> constructorValues = constructorValues(constructor.getParameters(), argumentValueProvider);
 
         if (requiresReflection && !isCompanion) { // Companion reflection not implemented
@@ -117,15 +106,24 @@ public final class WriterGenUtils {
         }
 
         if (isConstructor) {
-            if (isKotlinDefault) {
-                List<ExpressionDef> values = new ArrayList<>();
-                values.addAll(constructorValues);
-                values.addAll(List.of(masksExpressions)); // Bit mask of defaults
-                values.add(ExpressionDef.constant(null)); // Last parameter is just a marker and is always null
-                return beanType.instantiate(
-                    getDefaultKotlinConstructorParameters(constructor.getParameters(), masksExpressions.length),
-                    values
-                );
+            if (allowKotlinDefaults) {
+                List<ParameterElement> constructorArguments = Arrays.asList(constructor.getParameters());
+                if (hasKotlinDefaultsParameters(constructorArguments)) {
+                    int numberOfMasks = calculateNumberOfKotlinDefaultsMasks(constructorArguments);
+                    // Calculate the Kotlin defaults mask
+                    // Every bit indicated true/false if the parameter should have the default value set
+                    ExpressionDef[] masksExpressions = computeKotlinDefaultsMask(numberOfMasks, argumentValueProvider, argumentValueIsPresentProvider, constructorArguments);
+
+                    List<ExpressionDef> values = new ArrayList<>();
+                    values.addAll(constructorValues);
+                    values.addAll(List.of(masksExpressions)); // Bit mask of defaults
+                    values.add(ExpressionDef.nullValue()); // Last parameter is just a marker and is always null
+                    List<TypeDef> defaultKotlinConstructorParameters = getDefaultKotlinConstructorParameters(constructor.getParameters(), masksExpressions.length);
+                    return beanType.instantiate(
+                        defaultKotlinConstructorParameters,
+                        values
+                    );
+                }
             }
             return beanType.instantiate(constructor, constructorValues);
         } else if (constructor.isStatic()) {
@@ -147,20 +145,20 @@ public final class WriterGenUtils {
         List<ExpressionDef> expressions = new ArrayList<>(constructorArguments.length);
         for (int i = 0; i < constructorArguments.length; i++) {
             ParameterElement constructorArgument = constructorArguments[i];
-            ExpressionDef value = argumentValueProvider.apply(i, constructorArgument);
-            if (value == null) {
-                ClassElement type = constructorArgument.getType();
-                if (type.isPrimitive() && !type.isArray()) {
-                    if (type.equals(PrimitiveElement.BOOLEAN)) {
-                        expressions.add(ExpressionDef.falseValue());
-                    } else {
-                        expressions.add(TypeDef.Primitive.INT.constant(0).cast(TypeDef.erasure(type)));
-                    }
+            ExpressionDef value = argumentValueProvider == null ? null : argumentValueProvider.apply(i, constructorArgument);
+            if (value != null) {
+                expressions.add(value);
+                continue;
+            }
+            ClassElement type = constructorArgument.getType();
+            if (type.isPrimitive() && !type.isArray()) {
+                if (type.equals(PrimitiveElement.BOOLEAN)) {
+                    expressions.add(ExpressionDef.falseValue());
                 } else {
-                    expressions.add(ExpressionDef.nullValue());
+                    expressions.add(TypeDef.Primitive.INT.constant(0).cast(TypeDef.erasure(type)));
                 }
             } else {
-                expressions.add(value);
+                expressions.add(ExpressionDef.nullValue());
             }
         }
         return expressions;

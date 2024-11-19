@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
 /**
@@ -174,11 +175,8 @@ public final class DispatchWriter2 implements ClassOutputWriter {
 
     @Nullable
     public MethodDef buildDispatchMethod() {
-        int[] cases = dispatchTargets.stream()
-            .filter(DispatchTarget::supportsDispatchMulti)
-            .mapToInt(dispatchTargets::indexOf)
-            .toArray();
-        if (cases.length == 0) {
+        List<Map.Entry<DispatchTarget, Integer>> dispatchers = getDispatchers(DispatchTarget::supportsDispatchMulti);
+        if (dispatchers.isEmpty()) {
             return null;
         }
 
@@ -192,29 +190,42 @@ public final class DispatchWriter2 implements ClassOutputWriter {
                 VariableDef.MethodParameter target = methodParameters.get(1);
                 VariableDef.MethodParameter argsArray = methodParameters.get(2);
 
-                Map<ExpressionDef.Constant, StatementDef> switchCases = CollectionUtils.newHashMap(cases.length + 1);
-                for (int caseIndex : cases) {
-                    DispatchTarget dispatchTarget = dispatchTargets.get(caseIndex);
+                Map<ExpressionDef.Constant, StatementDef> switchCases = CollectionUtils.newHashMap(dispatchers.size());
+
+                for (Map.Entry<DispatchTarget, Integer> e : dispatchers) {
+                    int caseIndex = e.getValue();
+                    DispatchTarget dispatchTarget = e.getKey();
                     StatementDef statementDef = dispatchTarget.dispatch(caseIndex, methodIndex, target, argsArray);
                     switchCases.put(ExpressionDef.constant(caseIndex), statementDef);
                 }
 
-                switchCases.put(ExpressionDef.nullValue(), aThis.invoke(UNKNOWN_DISPATCH_AT_INDEX, methodIndex).doThrow());
-
                 return StatementDef.multi(
-                    methodParameters.get(0).asStatementSwitch(TypeDef.OBJECT, switchCases),
+                    methodParameters.get(0).asStatementSwitch(
+                        TypeDef.OBJECT,
+                        switchCases,
+                        aThis.invoke(UNKNOWN_DISPATCH_AT_INDEX, methodIndex).doThrow()
+                    ),
                     ExpressionDef.nullValue().returning()
                 );
             });
     }
 
+    private List<Map.Entry<DispatchTarget, Integer>> getDispatchers(Predicate<DispatchTarget> predicate) {
+        List<Map.Entry<DispatchTarget, Integer>> result = new ArrayList<>();
+        int index = 0;
+        for (DispatchTarget dispatchTarget : dispatchTargets) {
+            if (predicate.test(dispatchTarget)) {
+                result.add(Map.entry(dispatchTarget, index));
+            }
+            index++;
+        }
+        return result;
+    }
+
     @Nullable
     public MethodDef buildDispatchOneMethod() {
-        int[] cases = dispatchTargets.stream()
-            .filter(DispatchTarget::supportsDispatchOne)
-            .mapToInt(dispatchTargets::indexOf)
-            .toArray();
-        if (cases.length == 0) {
+        List<Map.Entry<DispatchTarget, Integer>> dispatchers = getDispatchers(DispatchTarget::supportsDispatchOne);
+        if (dispatchers.isEmpty()) {
             return null;
         }
 
@@ -228,17 +239,20 @@ public final class DispatchWriter2 implements ClassOutputWriter {
                 VariableDef.MethodParameter target = methodParameters.get(1);
                 VariableDef.MethodParameter value = methodParameters.get(2);
 
-                Map<ExpressionDef.Constant, StatementDef> switchCases = CollectionUtils.newHashMap(cases.length + 1);
-                for (int caseIndex : cases) {
-                    DispatchTarget dispatchTarget = dispatchTargets.get(caseIndex);
+                Map<ExpressionDef.Constant, StatementDef> switchCases = CollectionUtils.newHashMap(dispatchers.size());
+                for (Map.Entry<DispatchTarget, Integer> e : dispatchers) {
+                    int caseIndex = e.getValue();
+                    DispatchTarget dispatchTarget = e.getKey();
                     StatementDef statementDef = dispatchTarget.dispatchOne(caseIndex, methodIndex, target, value);
                     switchCases.put(ExpressionDef.constant(caseIndex), statementDef);
                 }
 
-                switchCases.put(ExpressionDef.nullValue(), aThis.invoke(UNKNOWN_DISPATCH_AT_INDEX, methodIndex).doThrow());
-
                 return StatementDef.multi(
-                    methodParameters.get(0).asStatementSwitch(TypeDef.OBJECT, switchCases),
+                    methodParameters.get(0).asStatementSwitch(
+                        TypeDef.OBJECT,
+                        switchCases,
+                        aThis.invoke(UNKNOWN_DISPATCH_AT_INDEX, methodIndex).doThrow()
+                    ),
                     ExpressionDef.nullValue().returning()
                 );
             });
@@ -246,12 +260,9 @@ public final class DispatchWriter2 implements ClassOutputWriter {
 
     @Nullable
     public MethodDef buildGetTargetMethodByIndex() {
-        int[] cases = dispatchTargets.stream()
-            // Should we include methods that don't require reflection???
-            .filter(dispatchTarget -> dispatchTarget.getMethodElement() != null)
-            .mapToInt(dispatchTargets::indexOf)
-            .toArray();
-        if (cases.length == 0) {
+        // Should we include methods that don't require reflection???
+        List<Map.Entry<DispatchTarget, Integer>> dispatchers = getDispatchers(dispatchTarget -> dispatchTarget.getMethodElement() != null);
+        if (dispatchers.isEmpty()) {
             return null;
         }
 
@@ -263,9 +274,11 @@ public final class DispatchWriter2 implements ClassOutputWriter {
 
                 VariableDef.MethodParameter methodIndex = methodParameters.get(0);
 
-                Map<ExpressionDef.Constant, StatementDef> switchCases = CollectionUtils.newHashMap(cases.length + 1);
-                for (int caseIndex : cases) {
-                    DispatchTarget dispatchTarget = dispatchTargets.get(caseIndex);
+                Map<ExpressionDef.Constant, StatementDef> switchCases = CollectionUtils.newHashMap(dispatchers.size());
+
+                for (Map.Entry<DispatchTarget, Integer> dispatcher : dispatchers) {
+                    int caseIndex = dispatcher.getValue();
+                    DispatchTarget dispatchTarget = dispatcher.getKey();
                     MethodElement methodElement = dispatchTarget.getMethodElement();
 
                     StatementDef statement = TYPE_REFLECTION_UTILS.invokeStatic(METHOD_GET_REQUIRED_METHOD,
@@ -281,10 +294,12 @@ public final class DispatchWriter2 implements ClassOutputWriter {
                     switchCases.put(ExpressionDef.constant(caseIndex), statement);
                 }
 
-                switchCases.put(ExpressionDef.nullValue(), aThis.invoke(UNKNOWN_DISPATCH_AT_INDEX, methodIndex).doThrow());
-
                 return StatementDef.multi(
-                    methodParameters.get(0).asStatementSwitch(TypeDef.OBJECT, switchCases),
+                    methodParameters.get(0).asStatementSwitch(
+                        TypeDef.OBJECT,
+                        switchCases,
+                        aThis.invoke(UNKNOWN_DISPATCH_AT_INDEX, methodIndex).doThrow()
+                    ),
                     ExpressionDef.nullValue().returning()
                 );
             });
