@@ -91,11 +91,11 @@ public abstract class AbstractInitializableBeanIntrospection<B> implements Unsaf
     private IntrospectionBuilderData builderData;
 
     protected AbstractInitializableBeanIntrospection(Class<B> beanType,
-                                                     AnnotationMetadata annotationMetadata,
-                                                     AnnotationMetadata constructorAnnotationMetadata,
-                                                     Argument<?>[] constructorArguments,
-                                                     BeanPropertyRef<Object>[] propertiesRefs,
-                                                     BeanMethodRef<Object>[] methodsRefs) {
+                                                  AnnotationMetadata annotationMetadata,
+                                                  AnnotationMetadata constructorAnnotationMetadata,
+                                                  Argument<?>[] constructorArguments,
+                                                  BeanPropertyRef<Object>[] propertiesRefs,
+                                                  BeanMethodRef<Object>[] methodsRefs) {
         this.beanType = beanType;
         this.annotationMetadata = annotationMetadata == null ? AnnotationMetadata.EMPTY_METADATA : EvaluatedAnnotationMetadata.wrapIfNecessary(annotationMetadata);
         this.constructorAnnotationMetadata = constructorAnnotationMetadata == null ? AnnotationMetadata.EMPTY_METADATA : EvaluatedAnnotationMetadata.wrapIfNecessary(constructorAnnotationMetadata);
@@ -265,7 +265,7 @@ public abstract class AbstractInitializableBeanIntrospection<B> implements Unsaf
      * @param index  The method index
      * @param target The target
      * @param arg    The argument
-     * @param <V>    The result type
+     * @param <V> The result type
      * @return The result
      */
     @Nullable
@@ -474,63 +474,65 @@ public abstract class AbstractInitializableBeanIntrospection<B> implements Unsaf
                 .flatMap(a -> a.getAnnotation("builder", Introspected.IntrospectionBuilder.class)).orElse(null);
             Class<?> builderClass = getAnnotationMetadata().classValue(Introspected.class, "builderClass").orElse(null);
             if (builderAnn != null || builderClass != null) {
-                BeanIntrospection<Object> builderIntrospection = (BeanIntrospection<Object>) BeanIntrospection.getIntrospection(builderClass);
-                Collection<BeanMethod<Object, Object>> beanMethods = builderIntrospection.getBeanMethods();
-
-                // find the creator method
-                BeanMethod<Object, Object> constructorMethod = beanMethods.stream()
-                    .filter(m -> m.getReturnType().getType().equals(getBeanType()))
-                    .findFirst().orElse(null);
-                if (constructorMethod == null) {
-                    throw new IntrospectionException("No build method found in builder: " + builderClass.getName());
+                if (builderClass == null) {
+                    throw new IntrospectionException("Introspection defines invalid builder member for type: " + getBeanType());
                 } else {
-                    BeanMethod<Object, Object>[] builderMethods = beanMethods.stream()
-                        .filter(m ->
-                            m.getReturnType().getType().isAssignableFrom(builderIntrospection.getBeanType())
-                        )
-                        .toArray(BeanMethod[]::new);
+                    BeanIntrospection<Object> builderIntrospection = (BeanIntrospection<Object>) BeanIntrospection.getIntrospection(builderClass);
+                    Collection<BeanMethod<Object, Object>> beanMethods = builderIntrospection.getBeanMethods();
 
-                    List<Argument<?>> arguments = new ArrayList<>(builderMethods.length);
-                    Set<String> properties = CollectionUtils.newHashSet(builderMethods.length);
-                    Set<BeanMethod<?, ?>> excludedMethods = new HashSet<>();
-                    for (BeanMethod<Object, Object> builderMethod : builderMethods) {
-                        Argument<?> argument;
-                        @NonNull Argument<?>[] methodArgs = builderMethod.getArguments();
-                        if (ArrayUtils.isNotEmpty(methodArgs)) {
-                            argument = toWrapperIfNecessary(methodArgs[0]);
-                        } else {
-                            argument = Argument.of(Boolean.class, builderMethod.getName());
-                        }
-                        if (!properties.add(argument.getName())) {
-                            excludedMethods.add(builderMethod);
-                        } else {
-                            arguments.add(argument);
-                        }
-                    }
-                    if (!excludedMethods.isEmpty()) {
-                        builderMethods = Arrays.stream(builderMethods)
-                            .filter(bm -> !excludedMethods.contains(bm))
+                    // find the creator method
+                    BeanMethod<Object, Object> constructorMethod = beanMethods.stream()
+                        .filter(m -> m.getReturnType().getType().equals(getBeanType()))
+                        .findFirst().orElse(null);
+                    if (constructorMethod == null) {
+                        throw new IntrospectionException("No build method found in builder: " + builderClass.getName());
+                    } else {
+                        BeanMethod<Object, Object>[] builderMethods = beanMethods.stream()
+                            .filter(m ->
+                                m.getReturnType().getType().isAssignableFrom(builderIntrospection.getBeanType())
+                            )
                             .toArray(BeanMethod[]::new);
+
+                        List<Argument<?>> arguments = new ArrayList<>(builderMethods.length);
+                        Set<String> properties = CollectionUtils.newHashSet(builderMethods.length);
+                        Set<BeanMethod<?, ?>> excludedMethods = new HashSet<>();
+                        for (BeanMethod<Object, Object> builderMethod : builderMethods) {
+                            Argument<?> argument;
+                            @NonNull Argument<?>[] methodArgs = builderMethod.getArguments();
+                            if (ArrayUtils.isNotEmpty(methodArgs)) {
+                                argument = toWrapperIfNecessary(methodArgs[0]);
+                            } else {
+                                argument = Argument.of(Boolean.class, builderMethod.getName());
+                            }
+                            if (!properties.add(argument.getName())) {
+                                excludedMethods.add(builderMethod);
+                            } else {
+                                arguments.add(argument);
+                            }
+                        }
+                        if (!excludedMethods.isEmpty()) {
+                            builderMethods = Arrays.stream(builderMethods)
+                                .filter(bm -> !excludedMethods.contains(bm))
+                                .toArray(BeanMethod[]::new);
+                        }
+                        this.builderData = new IntrospectionBuilderData(
+                            builderIntrospection,
+                            constructorMethod,
+                            builderMethods,
+                            arguments.toArray(Argument.ZERO_ARGUMENTS)
+                        );
                     }
-                    this.builderData = new IntrospectionBuilderData(
-                        builderIntrospection,
-                        constructorMethod,
-                        builderMethods,
-                        arguments.toArray(Argument.ZERO_ARGUMENTS)
-                    );
                 }
             } else {
-                throw new IntrospectionException("Introspection defines invalid builder member for type: " + getBeanType());
-            }
-        } else {
-            int constructorLength = constructorArguments.length;
-            @NonNull UnsafeBeanProperty<B, Object>[] writeableProperties = resolveWriteableProperties(beanPropertiesList);
+                int constructorLength = constructorArguments.length;
+                @NonNull UnsafeBeanProperty<B, Object>[] writeableProperties = resolveWriteableProperties(beanPropertiesList);
 
-            this.builderData = new IntrospectionBuilderData(
-                constructorArguments,
-                constructorLength,
-                (UnsafeBeanProperty<Object, Object>[]) writeableProperties
-            );
+                this.builderData = new IntrospectionBuilderData(
+                    constructorArguments,
+                    constructorLength,
+                    (UnsafeBeanProperty<Object, Object>[]) writeableProperties
+                );
+            }
         }
         return builderData;
     }
@@ -667,7 +669,7 @@ public abstract class AbstractInitializableBeanIntrospection<B> implements Unsaf
     }
 
     private static final class IntrospectionBuilder<B> implements Builder<B> {
-        private static final Object[] NULL_ARG = {null};
+        private static final Object[] NULL_ARG = { null };
         private final Object[] params;
         private final IntrospectionBuilderData builderData;
         private final AbstractInitializableBeanIntrospection<B> introspection;
@@ -990,10 +992,10 @@ public abstract class AbstractInitializableBeanIntrospection<B> implements Unsaf
         @Override
         public String toString() {
             return "BeanProperty{" +
-                "beanType=" + beanType +
-                ", type=" + ref.argument.getType() +
-                ", name='" + ref.argument.getName() + '\'' +
-                '}';
+                    "beanType=" + beanType +
+                    ", type=" + ref.argument.getType() +
+                    ", name='" + ref.argument.getName() + '\'' +
+                    '}';
         }
     }
 
@@ -1087,10 +1089,10 @@ public abstract class AbstractInitializableBeanIntrospection<B> implements Unsaf
         @Override
         public String toString() {
             return "BeanWriteProperty{" +
-                "beanType=" + beanType +
-                ", type=" + argument.getType() +
-                ", name='" + argument.getName() + '\'' +
-                '}';
+                    "beanType=" + beanType +
+                    ", type=" + argument.getType() +
+                    ", name='" + argument.getName() + '\'' +
+                    '}';
         }
     }
 
@@ -1158,10 +1160,10 @@ public abstract class AbstractInitializableBeanIntrospection<B> implements Unsaf
         @Override
         public String toString() {
             return "BeanReadProperty{" +
-                "beanType=" + beanType +
-                ", type=" + argument.getType() +
-                ", name='" + argument.getName() + '\'' +
-                '}';
+                    "beanType=" + beanType +
+                    ", type=" + argument.getType() +
+                    ", name='" + argument.getName() + '\'' +
+                    '}';
         }
     }
 
