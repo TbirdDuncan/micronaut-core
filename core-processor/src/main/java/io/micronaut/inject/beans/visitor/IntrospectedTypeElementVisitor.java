@@ -68,7 +68,7 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
      */
     public static final int POSITION = -100;
 
-    private final Map<String, BeanIntrospectionWriter> writers = new LinkedHashMap<>(10);
+    private final Map<String, BeanIntrospectionWriter2> writers = new LinkedHashMap<>(10);
 
     @Override
     public int getOrder() {
@@ -110,7 +110,7 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
                 }
                 int introspectionIndex = index.getAndIncrement();
                 processBuilderDefinition(ce, context, ce.findAnnotation(Introspected.class).orElse(introspected), introspectionIndex, targetPackage);
-                final BeanIntrospectionWriter writer = new BeanIntrospectionWriter(
+                final BeanIntrospectionWriter2 writer = new BeanIntrospectionWriter2(
                     targetPackage,
                     element.getName(),
                     introspectionIndex,
@@ -141,7 +141,7 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
                         }
                         int introspectionIndex = j++;
                         processBuilderDefinition(classElement, context, classElement.findAnnotation(Introspected.class).orElse(introspected), introspectionIndex, targetPackage);
-                        final BeanIntrospectionWriter writer = new BeanIntrospectionWriter(
+                        final BeanIntrospectionWriter2 writer = new BeanIntrospectionWriter2(
                             targetPackage,
                             element.getName(),
                             introspectionIndex,
@@ -162,7 +162,7 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
             }
         } else {
             processBuilderDefinition(element, context, introspected, 0, targetPackage);
-            final BeanIntrospectionWriter writer = new BeanIntrospectionWriter(
+            final BeanIntrospectionWriter2 writer = new BeanIntrospectionWriter2(
                 targetPackage,
                 element,
                 metadata ? element.getAnnotationMetadata() : null,
@@ -276,7 +276,7 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
     private void processElement(boolean metadata,
                                 Set<AnnotationValue<Annotation>> indexedAnnotations,
                                 ClassElement ce,
-                                BeanIntrospectionWriter writer,
+                                BeanIntrospectionWriter2 writer,
                                 boolean ignoreSettersWithDifferingType) {
 
         processElement(metadata,
@@ -312,7 +312,7 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
 
             MethodElement creatorMethodElement = builderType.getEnclosedElement(buildMethodQuery).orElse(null);
             if (creatorMethodElement != null) {
-                final BeanIntrospectionWriter builderWriter = new BeanIntrospectionWriter(
+                final BeanIntrospectionWriter2 builderWriter = new BeanIntrospectionWriter2(
                     targetPackage,
                     builderType.getName(),
                     index,
@@ -350,14 +350,14 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
                     );
                 builderType.getEnclosedElements(builderMethodQuery)
                     .forEach(builderWriter::visitBeanMethod);
-                writers.put(builderWriter.getBeanType().getClassName(), builderWriter);
+                writers.put(builderWriter.getBeanType().getName(), builderWriter);
             } else {
                 context.fail("No build method found in builder: " + builderType.getName(), classToBuild);
             }
         }
     }
 
-    private static void findBuilderMethodOrFail(ClassElement classToBuild, VisitorContext context, ClassElement builderType, ClassElement callingType, BeanIntrospectionWriter builderWriter) {
+    private static void findBuilderMethodOrFail(ClassElement classToBuild, VisitorContext context, ClassElement builderType, ClassElement callingType, BeanIntrospectionWriter2 builderWriter) {
         // try to find builder method
         MethodElement methodElement = classToBuild.getEnclosedElement(
             ElementQuery.ALL_METHODS
@@ -376,7 +376,7 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
                                 Set<AnnotationValue<Annotation>> indexedAnnotations,
                                 PropertyElementQuery propertyElementQuery,
                                 ClassElement ce,
-                                BeanIntrospectionWriter writer) {
+                                BeanIntrospectionWriter2 writer) {
         List<PropertyElement> beanProperties = ce.getBeanProperties(propertyElementQuery).stream()
             .filter(p -> !p.isExcluded())
             .toList();
@@ -424,7 +424,7 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
             }
         }
 
-        writers.put(writer.getBeanType().getClassName(), writer);
+        writers.put(writer.getBeanType().getName(), writer);
 
         addExecutableMethods(ce, writer, beanProperties);
     }
@@ -437,7 +437,7 @@ public class IntrospectedTypeElementVisitor implements TypeElementVisitor<Object
         return annotationMetadata;
     }
 
-    private void addExecutableMethods(ClassElement ce, BeanIntrospectionWriter writer, List<PropertyElement> beanProperties) {
+    private void addExecutableMethods(ClassElement ce, BeanIntrospectionWriter2 writer, List<PropertyElement> beanProperties) {
         Set<MethodElement> added = new HashSet<>();
         for (PropertyElement beanProperty : beanProperties) {
             if (beanProperty.isExcluded()) {

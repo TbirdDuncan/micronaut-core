@@ -33,13 +33,15 @@ import io.micronaut.inject.ast.Element;
 import io.micronaut.inject.ast.MethodElement;
 import io.micronaut.inject.ast.ParameterElement;
 import io.micronaut.inject.visitor.VisitorContext;
+import io.micronaut.sourcegen.model.AnnotationDef;
+import io.micronaut.sourcegen.model.ClassDef;
+import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Type;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import org.objectweb.asm.AnnotationVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Type;
 
 /**
  * Internal utility class for writing annotation metadata with evaluated expressions.
@@ -147,6 +149,18 @@ public final class EvaluatedExpressionProcessor {
             }
             av.visitEnd();
             annotationVisitor.visitEnd();
+        }
+    }
+
+    public void registerExpressionForBuildTimeInit(ClassDef.ClassDefBuilder classDefBuilder) {
+        String[] expressionClassNames = getEvaluatedExpressions()
+            .stream().map(ExpressionWithContext::expressionClassName).toArray(String[]::new);
+        if (ArrayUtils.isNotEmpty(expressionClassNames)) {
+            classDefBuilder.addAnnotation(
+                AnnotationDef.builder(BuildTimeInit.class)
+                    .addMember("value", expressionClassNames)
+                    .build()
+            );
         }
     }
 }

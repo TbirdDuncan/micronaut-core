@@ -106,7 +106,7 @@ public class ArgumentGenUtils {
      * @param argument                       The argument
      * @param loadTypeMethods                The load type methods
      */
-    protected static ExpressionDef pushReturnTypeArgument(AnnotationMetadata annotationMetadataWithDefaults,
+    public static ExpressionDef pushReturnTypeArgument(AnnotationMetadata annotationMetadataWithDefaults,
                                                           ClassTypeDef owningType,
                                                           ClassElement declaringType,
                                                           ClassElement argument,
@@ -153,7 +153,7 @@ public class ArgumentGenUtils {
      * @param argument                       The argument
      * @param loadTypeMethods                The load type methods
      */
-    protected static ExpressionDef pushCreateArgument(
+    public static ExpressionDef pushCreateArgument(
         AnnotationMetadata annotationMetadataWithDefaults,
         ClassElement declaringType,
         ClassTypeDef owningType,
@@ -552,7 +552,7 @@ public class ArgumentGenUtils {
      * @param argumentTypes                  The argument types
      * @param loadTypeMethods                The load type methods
      */
-    protected static ExpressionDef pushBuildArgumentsForMethod(
+    public static ExpressionDef pushBuildArgumentsForMethod(
         AnnotationMetadata annotationMetadataWithDefaults,
         ClassElement declaringElement,
         ClassTypeDef owningType,

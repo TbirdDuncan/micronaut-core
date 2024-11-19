@@ -123,7 +123,7 @@ public class ExecutableMethodsDefinitionWriter2 implements ClassOutputWriter {
         this.className = beanDefinitionClassName + CLASS_SUFFIX;
         this.thisType = ClassTypeDef.of(className);
         this.beanDefinitionReferenceClassName = beanDefinitionReferenceClassName;
-        this.methodDispatchWriter = new DispatchWriter2(ClassTypeDef.of(className));
+        this.methodDispatchWriter = new DispatchWriter2();
     }
 
     /**
