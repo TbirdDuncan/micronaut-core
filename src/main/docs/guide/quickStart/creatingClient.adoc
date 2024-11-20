@@ -1,4 +1,6 @@
 As mentioned previously, the Micronaut framework includes both an <<httpServer,HTTP server>> and an <<httpClient,HTTP client>>. A <<lowLevelHttpClient,low-level HTTP client>> is provided which you can use to test the `HelloController` created in the previous section.
+Important note: you'll need to add 
+dependency:micronaut-http-client[]
 
 .Testing Hello World
 
